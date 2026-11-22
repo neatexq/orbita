@@ -215,6 +215,7 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 <div id="end" class="hidden"></div>
 <div id="modal" class="hidden"><div id="mbox"></div></div>
 <div id="toast"></div>
+<div id="egg" style="display:none;position:fixed;inset:0;z-index:999;background:#000"><img src="art/p1.png" alt="" style="display:none;width:100%;height:100%;object-fit:cover"><img src="art/p2.png" alt="" style="display:none;width:100%;height:100%;object-fit:cover"><img src="art/p3.png" alt="" style="display:none;width:100%;height:100%;object-fit:cover"></div>
 
 <script src="data/q1.js"></script>
 <script src="data/q2.js"></script>
@@ -544,7 +545,17 @@ function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
   const T=tierOf(hit),pts=T.p;const from=G.score;
   G.log[G.i]={qid:G.qs[G.i],raw,hit,pts};G.score+=pts;save(false);
+  const q=Qs[G.qs[G.i]];
+  if(hit&&!store.get("orb-egg2")&&hit.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg2",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
   launchPart(raw,hit,T,pts,from);
+}
+// один раз на игрока: 3 фото по 2 секунды, звук полностью выключен
+function showEgg(done){
+  const wasMuted=muted;muted=true;try{AC&&AC.suspend()}catch(e){}
+  const el=$("egg"),imgs=[...el.querySelectorAll("img")],STEP=2000;
+  el.style.display="block";
+  imgs.forEach((im,i)=>setTimeout(()=>imgs.forEach((o,j)=>o.style.display=i===j?"block":"none"),i*STEP));
+  setTimeout(()=>{el.style.display="none";imgs.forEach(o=>o.style.display="none");muted=wasMuted;try{AC&&AC.resume()}catch(e){}done()},imgs.length*STEP);
 }
 function launchPart(raw,hit,T,pts,from){
   $("pcard").classList.replace("in","out");
