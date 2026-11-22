@@ -215,7 +215,6 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 <div id="end" class="hidden"></div>
 <div id="modal" class="hidden"><div id="mbox"></div></div>
 <div id="toast"></div>
-<div id="egg" style="display:none;position:fixed;inset:0;z-index:999;background:#000"><img id="egg1" src="art/egg1.webp" alt="" style="display:none;width:100%;height:100%;object-fit:cover"><img id="egg2" src="art/egg2.jpg" alt="" style="display:none;width:100%;height:100%;object-fit:cover"></div>
 
 <script src="data/q1.js"></script>
 <script src="data/q2.js"></script>
@@ -365,8 +364,7 @@ const ROCKET=["....R....","...RRR...","...RWR...","..WWWWW..","..WWWWW..","..WBB
 const RC={R:"#ff3d6e",W:"#eef4ff",B:"#2556c9",C:"#8ff0ff",G:"#b9c4d6",D:"#4a5266"};
 function drawRocket(x,y,s){const w=9*s,h=ROCKET.length*s;const ox=Math.round(x-w/2),oy=Math.round(y-h);
   ROCKET.forEach((row,j)=>{for(let i=0;i<row.length;i++){const ch=row[i];if(ch==="."||!RC[ch])continue;cx.fillStyle=RC[ch];cx.fillRect(ox+i*s,oy+j*s,s,s)}});
-  cx.fillStyle="rgba(0,0,0,.18)";cx.fillRect(ox+5*s,oy+3*s,2*s,10*s);
-  drawPilot(ox+3*s,oy+5*s,3*s);}
+  cx.fillStyle="rgba(0,0,0,.18)";cx.fillRect(ox+5*s,oy+3*s,2*s,10*s);}
 function drawFlame(x,y,s,power){if(power<=0.02)return;const len=(4+power*14+Math.random()*4*power)*s;
   const cols=["#fff6c9","#ffd54a","#ff8a2e","#ff3d6e"];
   for(let k=cols.length-1;k>=0;k--){const ww=(3-k*.55)*s*(0.7+power*.4),ll=len*(1-k*.18);cx.fillStyle=cols[3-k];
@@ -382,25 +380,6 @@ function drawPixelCloud(x,y,w,alpha){cx.fillStyle=`rgba(255,255,255,${alpha})`;c
 function drawISS(x,y){cx.fillStyle="#cfd8e6";cx.fillRect(x-10,y-2,20,4);cx.fillStyle="#2a5fd0";for(const dx of[-26,-17,9,18]){cx.fillRect(x+dx,y-9,8,18)}cx.fillStyle="#fff";cx.fillRect(x-3,y-4,6,8);if(Math.sin(world.t*4)>0){cx.fillStyle="#ff4f8b";cx.fillRect(x+12,y-1,2,2)}}
 function drawHubble(x,y){cx.fillStyle="#d9dde5";cx.fillRect(x-12,y-4,24,8);cx.fillStyle="#9aa3b2";cx.fillRect(x+12,y-4,4,8);cx.fillStyle="#2a5fd0";cx.fillRect(x-6,y-16,6,10);cx.fillRect(x-6,y+6,6,10)}
 
-/* ---- клякса ---- */
-const FACE=[".........yyyyyy.........","......yyyyyyyyyyy.......","....yyyyyyyyyyyyyy......","...yyyyyyyyyyyyyyyy.....","..yyyyyyyyyyyyyyyyys....","..yyyyyyyyyyyyyyyyss....",".yyyyyyyyyyyykyyyyy.....",".yyyyyyykyyyykyyyyyyyy..","yyyyyyyykyyyykyyyyyyyyy.","yyyyyyyykyyyykyyyyyyyyys","yyyyyyyykyyyykyyyyyyyyys","yyyyyyyyykyyykyyyyyyyyys","yyyyyyyyykyyykyyyyyyyyys","yyyyyyyyyyyyyyyyyyyyyyss","yyyyyyyyyyyyyyyyyyyyyys.",".yyyyyyyyyyyyyyyyyyyyys.",".yyyyykkkkkkkkkkkkkyyss.","..yyyyyyyyyyyyyyyyyyss..","...syyyyyyyyyyyyyysss...",".....syyyyyyyyyysss.....",".......ssssssssss......."];
-const FACE_PAL={
-  orig:{y:"#ffe600",s:"#e8c400",k:"#141414",h:"#9fdcff"},
-  moon:{y:"#ecebdc",s:"#cfcdb8",k:"#9b998a",h:"rgba(255,255,240,.25)"},
-  cloud:{y:"#ffffff",s:"#d6e8f7",k:"#c3d6e8"},
-};
-function drawFace(ctx,x,y,w,pal,alpha=1){
-  const c=w/FACE[0].length,h=c*FACE.length,x0=x-w/2,y0=y-h/2;
-  ctx.save();ctx.globalAlpha=alpha;
-  if(pal.h){ctx.fillStyle=pal.h;for(let j=0;j<FACE.length;j++)for(let i=0;i<FACE[j].length;i++)if(FACE[j][i]!==".")ctx.fillRect(Math.round(x0+(i-1)*c),Math.round(y0+(j-1)*c),Math.ceil(c*3),Math.ceil(c*3))}
-  for(let j=0;j<FACE.length;j++)for(let i=0;i<FACE[j].length;i++){const ch=FACE[j][i];if(ch===".")continue;ctx.fillStyle=pal[ch];ctx.fillRect(Math.round(x0+i*c),Math.round(y0+j*c),Math.ceil(c),Math.ceil(c))}
-  ctx.restore();
-}
-// пилот: 6x6 лицо в иллюминаторе
-const PILOT=[".yyyy.","ykyyky","ykyyky","yyyyyy","ykkkky",".yyyy."];
-function drawPilot(x,y,size){const c=size/6;cx.fillStyle="#8ff0ff";cx.fillRect(x,y,size,size);for(let j=0;j<6;j++)for(let i=0;i<6;i++){const ch=PILOT[j][i];if(ch===".")continue;cx.fillStyle=ch==="k"?"#141414":"#ffe600";cx.fillRect(x+i*c,y+j*c,Math.ceil(c),Math.ceil(c))}}
-// иконка вкладки
-(function setFavicon(){try{const f=document.createElement("canvas");f.width=f.height=64;const g=f.getContext("2d");g.imageSmoothingEnabled=false;drawFace(g,32,33,60,{y:"#ffe600",s:"#e8c400",k:"#141414"});let l=document.querySelector("link[rel=icon]");if(!l){l=document.createElement("link");l.rel="icon";document.head.appendChild(l)}l.href=f.toDataURL("image/png")}catch(e){}})();
 
 function update(dt){
   const w=world;w.t+=dt;
@@ -442,7 +421,7 @@ function draw(){
   if(sa>0){for(const s of STARS){const yy=((s.y*H+w.cam*w.px*s.sp*.08)%H+H)%H;const tw=.5+.5*Math.sin(t*2+s.tw);cx.fillStyle=`rgba(255,255,255,${sa*(.35+.65*tw)})`;cx.fillRect(Math.round(s.x*W),Math.round(yy),s.s,s.s)}}
   // луна
   const ma=clamp((w.cam-60)/100,0,1);
-  if(ma>0){const mx=W*.82,my=H*.2,r=Math.min(W,H)*.06;cx.save();cx.globalCompositeOperation="lighter";const mg=cx.createRadialGradient(mx,my,0,mx,my,r*2.4);mg.addColorStop(0,`rgba(255,250,210,${.18*ma})`);mg.addColorStop(1,"rgba(255,250,210,0)");cx.fillStyle=mg;cx.fillRect(mx-r*2.5,my-r*2.5,r*5,r*5);cx.restore();drawFace(cx,mx,my,r*2.3,FACE_PAL.moon,ma)}
+  if(ma>0){const mx=W*.82,my=H*.2,r=Math.min(W,H)*.06;cx.fillStyle=`rgba(235,238,245,${ma})`;cx.beginPath();cx.arc(mx,my,r,0,7);cx.fill();cx.fillStyle=`rgba(180,188,205,${ma})`;[[-.3,-.2,.25],[.35,.1,.18],[-.05,.4,.14],[.2,-.45,.1]].forEach(([a,b,c])=>{cx.beginPath();cx.arc(mx+a*r,my+b*r,c*r,0,7);cx.fill()})}
   // северное сияние
   const ay=ys(270);if(ay>-200&&ay<H+200){cx.save();cx.globalCompositeOperation="lighter";for(let k=0;k<3;k++){cx.beginPath();for(let x=0;x<=W;x+=12){const yy=ay+Math.sin(x*.008+t*.6+k)*30+Math.sin(x*.02-t+k*2)*12;x?cx.lineTo(x,yy):cx.moveTo(x,yy)}cx.lineWidth=40-k*10;cx.strokeStyle=k===1?"rgba(199,125,255,.10)":"rgba(94,243,140,.13)";cx.stroke()}cx.restore()}
   // Земля-шар снизу
@@ -457,12 +436,11 @@ function draw(){
   // шкала справа
   const step=w.px>20?1:w.px>2?50:100;cx.fillStyle="rgba(200,230,255,.35)";for(let a=Math.floor((w.cam-H/w.px)/step)*step;a<w.cam+H/w.px;a+=step){if(a<0)continue;const y=ys(a);if(y<0||y>H)continue;cx.fillRect(W-6,y,6,1);if(a%(step*2)===0&&step>1){cx.textAlign="right";cx.fillText(a+"км",W-10,y-8);cx.textAlign="left"}}
   // облака
-  for(const c of CLOUDS){const y=ys(c.alt);if(y<-60||y>H+60)continue;const x=((c.x*W+t*c.sp)%(W+300)+W+300)%(W+300)-150;const cw=c.w*(w.px>20?1:.6);if(c===CLOUDS[7])drawFace(cx,x,y-cw*.12,cw*.75,FACE_PAL.cloud,.85);else drawPixelCloud(x,y,cw,.85)}
+  for(const c of CLOUDS){const y=ys(c.alt);if(y<-60||y>H+60)continue;const x=((c.x*W+t*c.sp)%(W+300)+W+300)%(W+300)-150;drawPixelCloud(x,y,c.w*(w.px>20?1:.6),.85)}
   // спутники, МКС, Хаббл
   for(const s of SATS){const y=ys(s.alt);if(y<-10||y>H+10)continue;const x=(((s.x+t*s.sp)%1)+1)%1*W;cx.fillStyle=Math.sin(t*5+s.ph)>.6?"#fff":"rgba(255,255,255,.4)";cx.fillRect(Math.round(x),Math.round(y),2,2)}
   {const y=ys(408);if(y>-30&&y<H+30)drawISS(Math.round(((t*18)%(W+120))-60),Math.round(y))}
   {const y=ys(540);if(y>-30&&y<H+30)drawHubble(Math.round(W-((t*12)%(W+120))+60),Math.round(y))}
-  {const y=ys(598)+Math.sin(t*1.3)*6;if(y>-40&&y<H+40)drawFace(cx,((t*7+W*.3)%(W+120))-60,y,30,FACE_PAL.orig)}
   // метеоры
   cx.save();cx.globalCompositeOperation="lighter";for(const m of w.meteors){const gg=cx.createLinearGradient(m.x,m.y,m.x-m.vx*.12,m.y-m.vy*.12);gg.addColorStop(0,`rgba(255,240,200,${m.life})`);gg.addColorStop(1,"rgba(255,120,60,0)");cx.strokeStyle=gg;cx.lineWidth=2;cx.beginPath();cx.moveTo(m.x,m.y);cx.lineTo(m.x-m.vx*.12,m.y-m.vy*.12);cx.stroke()}cx.restore();
   // земля
@@ -566,16 +544,7 @@ function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
   const T=tierOf(hit),pts=T.p;const from=G.score;
   G.log[G.i]={qid:G.qs[G.i],raw,hit,pts};G.score+=pts;save(false);
-  const q=Qs[G.qs[G.i]];
-  if(hit&&!store.get("orb-egg")&&hit.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
   launchPart(raw,hit,T,pts,from);
-}
-function showEgg(done){
-  const wasMuted=muted;muted=true;try{AC&&AC.suspend()}catch(e){}
-  const el=$("egg"),a=$("egg1"),b=$("egg2");
-  a.style.display="block";b.style.display="none";el.style.display="block";
-  setTimeout(()=>{a.style.display="none";b.style.display="block"},2000);
-  setTimeout(()=>{el.style.display="none";b.style.display="none";muted=wasMuted;try{AC&&AC.resume()}catch(e){}done()},4000);
 }
 function launchPart(raw,hit,T,pts,from){
   $("pcard").classList.replace("in","out");
