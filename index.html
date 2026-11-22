@@ -150,7 +150,9 @@ canvas{position:fixed;inset:0;display:block;image-rendering:pixelated}
 .tbadge .ico{filter:none}
 .tb100{animation:tbglow 1.2s infinite alternate}
 @keyframes tbglow{to{box-shadow:0 0 18px #ff4fd8,0 0 4px #ffd54a}}
-#end .grid{display:flex;gap:8px;justify-content:flex-start;letter-spacing:0}
+#end .grid{display:flex;gap:8px;justify-content:flex-start;letter-spacing:0;flex-wrap:wrap}
+#res .resBtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#res .resBtns .btn{min-width:170px}
 #end .grid>span{animation:rise .5s cubic-bezier(.2,1.4,.4,1) both}
 #end td.b0{width:22px;padding-right:2px}
 .tierList span{display:flex;align-items:center;gap:8px}
@@ -284,7 +286,14 @@ const LANDMARKS=[
  [2,"облака начинаются здесь"],[11,"здесь летают авиалайнеры — 11 км"],[20,"стратосфера · небо темнеет"],[39,"рекордный прыжок с парашютом — 39 км"],
  [50,"конец стратосферы"],[80,"здесь сгорают метеоры"],[100,"ЛИНИЯ КАРМАНА · НАЧИНАЕТСЯ КОСМОС"],[120,"челноки входят в атмосферу"],
  [181,"перигей «Востока-1» · Гагарин, 1961"],[250,"северное сияние горит на этой высоте"],[327,"апогей «Востока-1» — 327 км"],
- [408,"МКС · 16 рассветов в сутки"],[470,"атмосфера почти закончилась"],[540,"телескоп «Хаббл»"],[620,"здесь кружат тысячи спутников"],[700,"ОРБИТА · идеальный запуск заканчивается здесь"],
+ [408,"МКС · 16 рассветов в сутки"],[470,"атмосфера почти закончилась"],[540,"телескоп «Хаббл»"],[620,"здесь кружат тысячи спутников"],[700,"ОРБИТА · идеальный запуск заканчивается здесь",1],
+ [780,"спутники связи Iridium — 780 км"],[1000,"1000 км · низкие орбиты редеют"],[1200,"созвездие OneWeb — 1200 км"],
+ [1500,"начинается внутренний радиационный пояс"],[2000,"ГРАНИЦА НИЗКОЙ ОРБИТЫ · 2000 км",1],[3500,"Земля уже не помещается в иллюминатор"],
+ [6371,"ты на высоте целого радиуса Земли — 6371 км"],[8062,"спутники O3b — 8062 км"],[13000,"внешний радиационный пояс"],
+ [19100,"ГЛОНАСС — 19 100 км"],[20200,"GPS · 20 200 км",1],[23222,"Galileo — 23 222 км"],
+ [35786,"ГЕОСТАЦИОНАРНАЯ ОРБИТА · 35 786 км",1],[60000,"магнитопауза · конец магнитного щита Земли"],[100000,"100 000 км · Земля размером с монету"],
+ [384400,"ЛУНА · 384 400 км",1],[1500000,"точка Лагранжа L2 · телескоп «Уэбб»",1],[55000000,"МАРС в великом противостоянии · ~55 млн км",1],
+ [149600000,"1 АСТРОНОМИЧЕСКАЯ ЕДИНИЦА · до Солнца",1],
 ];
 
 /* =================== УТИЛИТЫ =================== */
@@ -308,6 +317,26 @@ function findAns(q,raw){
   if(words.length>1)for(const a of q.a)for(const k of a.keys)if(!k.includes(" ")&&k.length>=4&&words.includes(k))return a;
   return null;
 }
+// свободный «конкретный» ответ: модель/серийник (буквы+цифры) или 2+ осмысленных слова
+const KB=["qwertyuiop","asdfghjkl","zxcvbnm","йцукенгшщзхъ","фывапролджэ","ячсмитьбю"];
+function junkWord(w){
+  if(/([a-zа-я])\1\1/.test(w))return true;
+  const L=w.replace(/[^a-zа-я]/g,"");
+  if(/[^aeiouyаеиоуыэюя]{5,}/.test(L))return true;
+  for(const r of KB){const rr=[...r].reverse().join("");for(let i=0;i+5<=L.length;i++){const p=L.slice(i,i+5);if(r.includes(p)||rr.includes(p))return true}}
+  return false;
+}
+function freeAns(raw){
+  const n=norm(raw);if(n.replace(/ /g,"").length<3)return null;
+  if(!/[a-zа-я]/.test(n))return null;
+  const words=n.split(" ");
+  if(words.some(junkWord))return null;
+  let ok=false;
+  if(/[0-9]/.test(n))ok=true;
+  else{const V=/[aeiouyаеиоуыэюя]/;const big=words.filter(w=>w.length>=3&&V.test(w));ok=big.length>=2&&new Set(big).size>=2&&words.every(w=>w.length<3||V.test(w))}
+  return ok?mkFree(raw.trim()):null;
+}
+function mkFree(label){return{label,keys:[norm(label)],stems:[],pct:0,clever:false,free:true}}
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function shuffle(arr,r){arr=arr.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
 const EPOCH=new Date(2026,10,1);
@@ -350,7 +379,10 @@ const pxHome=()=>H/11, pxGame=()=>H*.0052;
 
 const STARS=Array.from({length:260},()=>({x:Math.random(),y:Math.random(),s:Math.random()<.85?1:2,tw:rand(0,6),sp:rand(.15,.6)}));
 const CLOUDS=Array.from({length:22},()=>({x:Math.random(),alt:rand(1.3,9),w:rand(50,140),sp:rand(4,14)*(Math.random()<.5?-1:1)}));
-const SATS=Array.from({length:16},()=>({alt:rand(260,690),x:Math.random(),sp:rand(.01,.04)*(Math.random()<.5?-1:1),ph:rand(0,6)}));
+const SATS=[...Array.from({length:16},()=>({alt:rand(260,690),x:Math.random(),sp:rand(.01,.04)*(Math.random()<.5?-1:1),ph:rand(0,6)})),
+ ...Array.from({length:14},()=>({alt:rand(700,1900),x:Math.random(),sp:rand(.008,.03)*(Math.random()<.5?-1:1),ph:rand(0,6)})),
+ ...Array.from({length:12},()=>({alt:rand(19000,23300),x:Math.random(),sp:rand(.005,.02)*(Math.random()<.5?-1:1),ph:rand(0,6)})),
+ ...Array.from({length:12},()=>({alt:35786+rand(-40,40),x:Math.random(),sp:rand(.002,.006),ph:rand(0,6)}))];
 const CITY=(()=>{const r=rng(42),a=[];let x=0;while(x<1.2){const w=.015+r()*.04,h=10+r()*60;a.push({x,w,h,win:r()});x+=w+.002}return a})();
 
 function hex(h){h=h.replace("#","");return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
@@ -422,20 +454,20 @@ function draw(){
   if(sa>0){for(const s of STARS){const yy=((s.y*H+w.cam*w.px*s.sp*.08)%H+H)%H;const tw=.5+.5*Math.sin(t*2+s.tw);cx.fillStyle=`rgba(255,255,255,${sa*(.35+.65*tw)})`;cx.fillRect(Math.round(s.x*W),Math.round(yy),s.s,s.s)}}
   // луна
   const ma=clamp((w.cam-60)/100,0,1);
-  if(ma>0){const mx=W*.82,my=H*.2,r=Math.min(W,H)*.06;cx.fillStyle=`rgba(235,238,245,${ma})`;cx.beginPath();cx.arc(mx,my,r,0,7);cx.fill();cx.fillStyle=`rgba(180,188,205,${ma})`;[[-.3,-.2,.25],[.35,.1,.18],[-.05,.4,.14],[.2,-.45,.1]].forEach(([a,b,c])=>{cx.beginPath();cx.arc(mx+a*r,my+b*r,c*r,0,7);cx.fill()})}
+  if(ma>0){const mp=clamp(1-Math.abs(Math.log10(Math.max(w.cam,1)/384400))/1.2,0,1);const mx=W*.82,my=H*.2,r=Math.min(W,H)*.06*(1+2.2*mp*mp);cx.fillStyle=`rgba(235,238,245,${ma})`;cx.beginPath();cx.arc(mx,my,r,0,7);cx.fill();cx.fillStyle=`rgba(180,188,205,${ma})`;[[-.3,-.2,.25],[.35,.1,.18],[-.05,.4,.14],[.2,-.45,.1]].forEach(([a,b,c])=>{cx.beginPath();cx.arc(mx+a*r,my+b*r,c*r,0,7);cx.fill()})}
   // северное сияние
   const ay=ys(270);if(ay>-200&&ay<H+200){cx.save();cx.globalCompositeOperation="lighter";for(let k=0;k<3;k++){cx.beginPath();for(let x=0;x<=W;x+=12){const yy=ay+Math.sin(x*.008+t*.6+k)*30+Math.sin(x*.02-t+k*2)*12;x?cx.lineTo(x,yy):cx.moveTo(x,yy)}cx.lineWidth=40-k*10;cx.strokeStyle=k===1?"rgba(199,125,255,.10)":"rgba(94,243,140,.13)";cx.stroke()}cx.restore()}
   // Земля-шар снизу
   const ea=clamp((w.cam-40)/60,0,1);
-  if(ea>0){const k=clamp((w.cam-40)/660,0,1);const R=W*2.2,hh=H*(.06+.16*k)+ (1-ea)*-60;const ccy=H+R-hh;
+  if(ea>0){const k=clamp((w.cam-40)/660,0,1);const far=clamp(Math.log10(Math.max(w.cam,700)/700)/Math.log10(384400/700),0,1);const R0=W*2.2,R1=Math.min(W,H)*.05;const R=R0*Math.pow(R1/R0,far);const hh=Math.min(lerp(H*(.06+.16*k),H*.12,far),R*1.8)+(1-ea)*-60;const ccy=H+R-hh;
     cx.save();cx.shadowColor="#5ff3ff";cx.shadowBlur=40;const eg=cx.createLinearGradient(0,H-hh,0,H);eg.addColorStop(0,`rgba(70,150,255,${ea})`);eg.addColorStop(.3,`rgba(30,90,190,${ea})`);eg.addColorStop(1,`rgba(10,40,100,${ea})`);cx.fillStyle=eg;cx.beginPath();cx.arc(W/2,ccy,R,0,7);cx.fill();cx.restore();
     cx.save();cx.beginPath();cx.arc(W/2,ccy,R,0,7);cx.clip();cx.fillStyle=`rgba(255,255,255,${.25*ea})`;for(let i=0;i<14;i++){const xx=((i*137+t*6)%(W+200))-100;cx.fillRect(xx,H-hh+12+(i%4)*14,60+(i%3)*30,5)}cx.fillStyle=`rgba(60,160,90,${.35*ea})`;for(let i=0;i<5;i++){const xx=((i*311+t*3)%(W+300))-150;cx.fillRect(xx,H-hh+30+(i%2)*20,120,26)}cx.restore();
     cx.strokeStyle=`rgba(150,230,255,${.8*ea})`;cx.lineWidth=3;cx.beginPath();cx.arc(W/2,ccy,R+2,0,7);cx.stroke()}
   // ориентиры
   cx.font="8px 'Press Start 2P'";cx.textBaseline="middle";
-  LANDMARKS.forEach(([a,txt],i)=>{const y=ys(a);if(y<-20||y>H+20)return;const left=i%2===0;const big=a===100||a===700;cx.fillStyle=big?"rgba(95,243,255,.8)":"rgba(220,240,255,.45)";cx.strokeStyle=cx.fillStyle;cx.setLineDash([4,6]);cx.lineWidth=1;cx.beginPath();if(left){cx.moveTo(10,y);cx.lineTo(40,y)}else{cx.moveTo(W-40,y);cx.lineTo(W-10,y)}cx.stroke();cx.setLineDash([]);cx.textAlign=left?"left":"right";const lab=(left?"":"")+txt+(left?"":"");cx.fillText(lab,left?46:W-46,y);cx.textAlign="left"});
+  LANDMARKS.forEach(([a,txt,bg],i)=>{const y=ys(a);if(y<-20||y>H+20)return;const left=i%2===0;const big=a===100||!!bg;cx.fillStyle=big?"rgba(95,243,255,.8)":"rgba(220,240,255,.45)";cx.strokeStyle=cx.fillStyle;cx.setLineDash([4,6]);cx.lineWidth=1;cx.beginPath();if(left){cx.moveTo(10,y);cx.lineTo(40,y)}else{cx.moveTo(W-40,y);cx.lineTo(W-10,y)}cx.stroke();cx.setLineDash([]);cx.textAlign=left?"left":"right";const lab=(left?"":"")+txt+(left?"":"");cx.fillText(lab,left?46:W-46,y);cx.textAlign="left"});
   // шкала справа
-  const step=w.px>20?1:w.px>2?50:100;cx.fillStyle="rgba(200,230,255,.35)";for(let a=Math.floor((w.cam-H/w.px)/step)*step;a<w.cam+H/w.px;a+=step){if(a<0)continue;const y=ys(a);if(y<0||y>H)continue;cx.fillRect(W-6,y,6,1);if(a%(step*2)===0&&step>1){cx.textAlign="right";cx.fillText(a+"км",W-10,y-8);cx.textAlign="left"}}
+  let step=1;if(w.px<=20){const raw=H/w.px/6,p10=Math.pow(10,Math.floor(Math.log10(raw)));step=[1,2,5,10].map(m=>m*p10).find(v=>v>=raw)}cx.fillStyle="rgba(200,230,255,.35)";for(let a=Math.floor((w.cam-H/w.px)/step)*step;a<w.cam+H/w.px;a+=step){if(a<0)continue;const y=ys(a);if(y<0||y>H)continue;cx.fillRect(W-6,y,6,1);if(a%(step*2)===0&&step>1){cx.textAlign="right";cx.fillText(a.toLocaleString("ru-RU")+"км",W-10,y-8);cx.textAlign="left"}}
   // облака
   for(const c of CLOUDS){const y=ys(c.alt);if(y<-60||y>H+60)continue;const x=((c.x*W+t*c.sp)%(W+300)+W+300)%(W+300)-150;drawPixelCloud(x,y,c.w*(w.px>20?1:.6),.85)}
   // спутники, МКС, Хаббл
@@ -494,18 +526,18 @@ const show=(id,on)=>$(id).classList.toggle("hidden",!on);
 function hideAll(){["pcard","bar","res","end","count"].forEach(i=>show(i,false));$("err").classList.remove("on")}
 
 function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function f(n){const k=clamp((n-t0)/dur,0,1);const e=1-Math.pow(1-k,3);el.textContent=Math.round(lerp(from,to,e)).toLocaleString("ru-RU")+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
-function setHud(){$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
+function setHud(){if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
 
 function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):null}
-function save(done){const k=storeKey();if(!k)return;store.set(k,{i:G.i,score:G.score,log:G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,pts:l.pts})),done})}
-function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];const hit=l.label?q.a.find(a=>a.label===l.label):null;return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
+function save(done){const k=storeKey();if(!k)return;store.set(k,{i:G.i,score:G.score,log:G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts})),done})}
+function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];const hit=l.label?(!l.free&&q.a.find(a=>a.label===l.label))||mkFree(l.label):null;return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
 
 function startGame(mode,opt={}){
   ac();SFX.click();
   let qs,title,day=null;
   if(mode==="daily"){day=opt.day||TODAY;qs=dailySet(day);title=`ЗАПУСК #${day}`}
   else if(mode==="pack"){qs=shuffle(Qs.filter(q=>q.cat===opt.cat).map(q=>q.id),Math.random).slice(0,7);title=CATS[opt.cat].toUpperCase()}
-  else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random).slice(0,7);title=`БЕСКОНЕЧНЫЙ #${n}`}
+  else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=`БЕСКОНЕЧНЫЙ #${n}`}
   G={mode,day,qs,i:0,score:0,log:[],title};
   if(mode==="daily"){const s=store.get("orb-d-"+dKey(dateOf(day)));if(s){G.log=restoreLog(s);G.i=s.i;G.score=s.score;if(s.done){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем запуск — второго шанса нет")}}
   enterGameView(false);
@@ -519,9 +551,12 @@ function enterGameView(instant){
   $("altV").textContent=(G?G.score:0)+" км";$("scoreV").textContent=G?G.score:0;
   world.alt=G?G.score:0;setHud();
 }
+// бесконечный: вопросы не повторяются, пока не кончатся все 100, потом новая перетасовка
+function ensurePool(){if(G.i<G.qs.length)return;const last=G.qs[G.qs.length-1];const s=shuffle(Qs.map(q=>q.id),Math.random);if(s[0]===last&&s.length>1)[s[0],s[1]]=[s[1],s[0]];G.qs.push(...s)}
 function askQ(){
+  if(G.mode==="endless")ensurePool();
   const q=Qs[G.qs[G.i]];setHud();hideAll();
-  $("qn").textContent=`${G.title} · ВОПРОС ${G.i+1} ИЗ 7`;
+  $("qn").textContent=`${G.title} · ВОПРОС ${G.i+1}${G.mode==="endless"?"":" ИЗ 7"}`;
   const qt=$("qt");qt.textContent="";qt.classList.add("typed");
   const card=$("pcard");card.classList.remove("out","in");void card.offsetWidth;card.classList.add("in");show("pcard",true);
   let k=0;const txt=q.q;const ty=setInterval(()=>{qt.textContent=txt.slice(0,++k);if(k%2===0)tone(900+Math.random()*200,.02,"square",.02);if(k>=txt.length){clearInterval(ty);qt.classList.remove("typed")}},28);
@@ -539,7 +574,7 @@ function startClock(){
 }
 function stopClock(){clearInterval(clock);countT.forEach(clearTimeout);show("count",false)}
 let errT;function err(msg){const e=$("err");e.textContent=msg;e.classList.add("on");clearTimeout(errT);errT=setTimeout(()=>e.classList.remove("on"),1600);const a=$("ans");a.classList.remove("bad");void a.offsetWidth;a.classList.add("bad");SFX.err()}
-$("bar").addEventListener("submit",e=>{e.preventDefault();if(!G||G.locked)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];const hit=findAns(q,raw);if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
+$("bar").addEventListener("submit",e=>{e.preventDefault();if(!G||G.locked)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];const hit=findAns(q,raw)||freeAns(raw);if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
 function timeUp(){if(G.locked)return;commit("",null)}
 function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
@@ -576,18 +611,19 @@ function reveal(T,raw,hit,from){
   setHud();
   const top=q.a.slice().sort((a,b)=>b.pct-a.pct).slice(0,5);if(hit&&!top.includes(hit))top.push(hit);
   const max=top[0].pct||1;
-  const r=$("res");
+  const r=$("res"),endless=G.mode==="endless";if(endless&&!hit)G.over=true;
   r.innerHTML=`<div class="tn rise ${T.p===100?"rainbow":""}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 20px ${T.c}88,0 3px 0 #000`}">${T.n}</div>
    <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>
    <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+${T.p} ОЧК · ${T.p?"+"+T.p+" КМ ВВЕРХ":"НА МЕСТЕ"}</div>
-   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${hit.pct?`так ответили ~${hit.pct}%`:"ни одного совпадения"}`:""}</div>
+   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${hit.pct?`так ответили ~${hit.pct}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
    <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${a===hit?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="lb">${esc(a.label)}</div></div><div class="pc">${a.pct}%</div></div>`).join("")}</div>
-   <button class="btn rise" id="nextBtn" style="animation-delay:.6s">${G.i===6?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>`;
+   <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">ЗАКОНЧИТЬ ■</button>`:""}</div>`;
   show("res",true);
   setTimeout(()=>r.querySelectorAll(".fl").forEach(f=>f.style.width=f.dataset.w+"%"),600);
   const nb=$("nextBtn");nb.onclick=next;setTimeout(()=>nb.focus(),700);
+  if($("stopBtn"))$("stopBtn").onclick=()=>{G.over=true;next()};
 }
-function next(){if(!G||$("res").classList.contains("hidden"))return;SFX.click();show("res",false);world.tierAT=0;world.anchorT=.74;G.i++;save(G.i>=7);if(G.i<7)askQ();else finish(false)}
+function next(){if(!G||$("res").classList.contains("hidden"))return;SFX.click();show("res",false);world.tierAT=0;world.anchorT=.74;G.i++;if(G.mode==="endless"){if(G.over)finish(false);else askQ();return}save(G.i>=7);if(G.i<7)askQ();else finish(false)}
 function finish(already){
   hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent="ЗАПУСК ЗАВЕРШЁН";
   if(G.mode==="daily"&&!already){save(true);updateStreak()}
@@ -595,7 +631,7 @@ function finish(already){
   const grid=G.log.map(l=>tierOf(l.hit).e).join("");
   G.share=`ОРБИТА · ${G.title}\n▲ ${alt} км — ${lm}\n${grid}`;
   const e=$("end");
-  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+i*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
+  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
    <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
    <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} БЕСКОНЕЧНО</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ЕЩЁ ЗАПУСК</button>`}</div>
    <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>
@@ -651,7 +687,7 @@ $("menuBtn").onclick=()=>{SFX.click();modal(`<h3>МЕНЮ</h3><div class="mlist"
  <button class="btn small" id="mHome"><span>${ico("home",16)} НА ГЛАВНУЮ</span></button></div>`);
  $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mHome").onclick=()=>{show("modal",false);goHome()}};
 $("sndBtn").onclick=()=>{muted=!muted;store.set("orb-mute",muted);setMuteUI();if(!muted){ac();SFX.click()}};
-addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&document.activeElement.id!=="nextBtn"){e.preventDefault();next()}});
+addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&!$("res").contains(document.activeElement)){e.preventDefault();next()}});
 
 setMuteUI();initIcons();world.px=world.pxT=pxHome();initHome();
 addEventListener("resize",()=>{world.pxT=G?pxGame():pxHome()});
