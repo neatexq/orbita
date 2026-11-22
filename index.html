@@ -317,7 +317,7 @@ function findAns(q,raw){
   if(words.length>1)for(const a of q.a)for(const k of a.keys)if(!k.includes(" ")&&k.length>=4&&words.includes(k))return a;
   return null;
 }
-// свободный «конкретный» ответ: модель/серийник (буквы+цифры) или 2+ осмысленных слова
+// свободный «конкретный» ответ: модель/серийник (буквы+цифры) в вопросах про технику
 const KB=["qwertyuiop","asdfghjkl","zxcvbnm","йцукенгшщзхъ","фывапролджэ","ячсмитьбю"];
 function junkWord(w){
   if(/([a-zа-я])\1\1/.test(w))return true;
@@ -326,15 +326,15 @@ function junkWord(w){
   for(const r of KB){const rr=[...r].reverse().join("");for(let i=0;i+5<=L.length;i++){const p=L.slice(i,i+5);if(r.includes(p)||rr.includes(p))return true}}
   return false;
 }
-function freeAns(raw){
+// модели бывают только у техники: оружие, транспорт, гаджеты, инструменты — на «мультик» или «имя» не засчитываем
+const MODEL_Q=/оружи|автомат|пистолет|винтовк|танк|самол|вертол|ракет|автомобил|машин|техник|телефон|смартфон|гаджет|инструмент|летать|поезд|корабл|процессор|видеокарт/;
+function freeAns(q,raw){
+  if(!MODEL_Q.test(q.q.toLowerCase()))return null;
   const n=norm(raw);if(n.replace(/ /g,"").length<3)return null;
-  if(!/[a-zа-я]/.test(n))return null;
-  const words=n.split(" ");
-  if(words.some(junkWord))return null;
-  let ok=false;
-  if(/[0-9]/.test(n))ok=true;
-  else{const V=/[aeiouyаеиоуыэюя]/;const big=words.filter(w=>w.length>=3&&V.test(w));ok=big.length>=2&&new Set(big).size>=2&&words.every(w=>w.length<3||V.test(w))}
-  return ok?mkFree(raw.trim()):null;
+  // модель: буквы (1–8) + номер (1–5 цифр), дальше максимум два коротких хвоста: «т 300 22384382», «ак 47», «ту 154», «iphone 15 pro»
+  if(!/^[a-zа-я]{1,8} ?[0-9]{1,5}[a-zа-я]{0,3}( [0-9a-zа-я]{1,10}){0,2}$/.test(n))return null;
+  if(n.split(" ").some(junkWord))return null;
+  return mkFree(raw.trim());
 }
 function mkFree(label){return{label,keys:[norm(label)],stems:[],pct:0,clever:false,free:true}}
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -574,7 +574,7 @@ function startClock(){
 }
 function stopClock(){clearInterval(clock);countT.forEach(clearTimeout);show("count",false)}
 let errT;function err(msg){const e=$("err");e.textContent=msg;e.classList.add("on");clearTimeout(errT);errT=setTimeout(()=>e.classList.remove("on"),1600);const a=$("ans");a.classList.remove("bad");void a.offsetWidth;a.classList.add("bad");SFX.err()}
-$("bar").addEventListener("submit",e=>{e.preventDefault();if(!G||G.locked)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];const hit=findAns(q,raw)||freeAns(raw);if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
+$("bar").addEventListener("submit",e=>{e.preventDefault();if(!G||G.locked)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];const hit=findAns(q,raw)||freeAns(q,raw);if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
 function timeUp(){if(G.locked)return;commit("",null)}
 function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
