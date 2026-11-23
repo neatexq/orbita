@@ -244,6 +244,8 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 <script src="data/q3.js"></script>
 <script src="data/q4.js"></script>
 <script src="data/q5.js"></script>
+<script src="data/m1.js"></script>
+<script src="data/m2.js"></script>
 <script>
 "use strict";
 /* =================== ДАННЫЕ =================== */
@@ -282,7 +284,10 @@ const CAT_ICON=Object.fromEntries(Object.keys(CATS).map(k=>[k,ico(k,18)]));
 function tierBadge(T,size=26){const inner=T.p===100?ico("star",size-8):"";return`<span class="tbadge ${T.p===100?"tb100":""}" style="width:${size}px;height:${size}px;background:${T.p===100?"#2a0f3a":T.c};border-color:${T.c};box-shadow:0 0 10px ${T.c}88" title="${T.n} +${T.p}">${inner}</span>`}
 const norm=s=>s.toLowerCase().replace(/ё/g,"е").replace(/\+\+/g," плюс плюс").replace(/#/g," шарп").replace(/[-‐–—]/g," ").replace(/[^a-zа-я0-9 ]/g,"").replace(/\s+/g," ").trim();
 const stem=s=>s.split(" ").map(w=>w.length>4?w.replace(/(ями|ами|ого|его|ой|ей|ий|ый|ая|яя|ое|ее|ые|ие|ов|ев|ок|ек|ы|и|а|я|о|е|ь|у|ю|й)$/,""):w).join(" ");
+// data/m*.js — дополнительные настоящие ответы (0%, «один на миллион»), ключ = текст вопроса
+const MORE=window.ORB_MORE||{};
 const Qs=(window.ORB||[]).map(([cat,q,main,one="",zero=""],id)=>{
+  if(MORE[q])zero=zero?zero+", "+MORE[q]:MORE[q];
   const a=[],seen=new Set();
   const add=(names,pct,clever)=>{const keys=names.map(norm).filter(Boolean);if(!keys.length||seen.has(keys[0]))return;keys.forEach(k=>seen.add(k));a.push({label:names[0].trim(),keys,stems:keys.map(stem),pct,clever})};
   main.split(",").forEach(x=>{x=x.trim();if(!x)return;const m=x.match(/^(.*?)\s+(\d+)(!?)$/);if(m)add(m[1].split("/"),+m[2],!!m[3]);else add(x.split("/"),1,false)});
@@ -327,6 +332,9 @@ const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){retu
 function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
 function findAns(q,raw){
   const n=norm(raw);if(!n)return null;
+  // «гта 5», «дота 2» — номер части не делает популярный ответ редким
+  const base=n.replace(/(?<=[a-zа-я]) ?[0-9]+( [0-9]+)*$/,"");
+  if(base!==n)for(const a of q.a)if(a.pct>0&&a.keys.includes(base))return a;
   for(const a of q.a)if(a.keys.includes(n))return a;
   let best=null,bd=9;
   for(const a of q.a)for(const k of a.keys){const tol=k.length>=8?2:k.length>=5?1:0;const d=lev(k,n);if(d<=tol&&d<bd){bd=d;best=a}}
