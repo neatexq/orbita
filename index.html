@@ -241,11 +241,34 @@ select.nick option{background:#06102a;color:#fff}
 #end .rowBtns .btn{white-space:nowrap}
 #end details{margin-top:12px}
 #end summary{font-family:"Press Start 2P";font-size:8px;color:var(--cy);cursor:pointer;letter-spacing:1px;padding:6px 0}
+/* рейтинг дня */
+#lbBox{margin-top:6px}
+.lbhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:16px 0 4px}
+.lbhead b{font-family:"Press Start 2P";font-size:9px;color:var(--hot);letter-spacing:2px;font-weight:400}
+.lbhead small{font-family:"Press Start 2P";font-size:7px;color:var(--muted);white-space:nowrap}
+.lbme{font-family:"Press Start 2P";font-size:clamp(15px,4vw,22px);color:#fff;text-align:center;margin:12px 0 4px;text-shadow:2px 0 var(--hot),-2px 0 var(--cy);animation:rise .6s cubic-bezier(.2,1.3,.4,1) both}
+.lbnote{font-size:11px;color:var(--muted);text-align:center;margin-bottom:6px}
+.lr{display:grid;grid-template-columns:34px minmax(0,1fr) auto 64px;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px dashed #1f4670}
+.lr .pl{font-family:"Press Start 2P";font-size:9px;color:var(--muted)}
+.lr .pl.g1{color:var(--gold)}.lr .pl.g2{color:#cfe3f5}.lr .pl.g3{color:#ff8a2e}
+.lr .nm{font-family:"Press Start 2P";font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lr .nm.anon{color:var(--muted)}
+.lr .nm small{font-family:"JetBrains Mono";font-size:10px;color:var(--muted)}
+.lr .tb{display:flex;gap:2px}
+.lr .tb .tbadge{border-width:1px}
+.lr .sc{font-family:"Press Start 2P";font-size:9px;color:var(--hot);white-space:nowrap;text-align:right}
+.lr.me{background:rgba(95,243,255,.1);box-shadow:inset 3px 0 var(--cy)}
+.lr.me .nm{color:var(--cy)}
+.lr.gap{display:block;text-align:center;color:var(--muted);font-family:"Press Start 2P";font-size:9px;padding:6px;border-bottom:none}
+.lbtabs{margin-bottom:4px}
 @media (max-width:600px){
   #homeBottom .rowBtns .btn{padding:10px 6px;font-size:8px}
   .lb{grid-template-columns:26px 1fr auto auto;gap:6px}
   #end{padding:16px}
   #end .rowBtns .btn{font-size:10px;padding:12px 8px}
+  .lr{grid-template-columns:28px minmax(0,1fr) auto 54px;gap:6px;padding:7px 2px}
+  .lr .nm,.lr .sc{font-size:8px}
+  .lr .tb{gap:1px}.lr .tb .tbadge{width:8px!important;height:8px!important}
   #hud{left:58px;right:58px}
   .hbox{min-width:0;padding:6px 8px}
   #pips i{width:9px;height:9px}
@@ -283,6 +306,7 @@ select.nick option{background:#06102a;color:#fff}
       <button class="btn small hot" id="endlessBtn">БЕСКОНЕЧНО</button>
       <button class="btn small hot" id="duelBtn">ДУЭЛЬ</button>
       <button class="btn small hot" id="roomBtn">КОМНАТА</button>
+      <button class="btn small" id="lbBtn">РЕЙТИНГ</button>
     </div>
     <div class="meta"><span id="dayTxt">ЗАПУСК #1</span><span id="streakTxt"></span></div>
   </div>
@@ -526,7 +550,7 @@ const SFX={
   win:()=>[0,4,7,12,7,12,16,24].forEach((s,i)=>tone(392*Math.pow(2,s/12),.2,"square",.05,0,i*.11)),
 };
 function setMuteUI(){$("sndBtn").innerHTML=ico(muted?"mute":"snd",18);$("sndBtn").style.opacity=muted?.7:1}
-function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("roomBtn").innerHTML=`${ico("party",14)} КОМНАТА`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
+function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("roomBtn").innerHTML=`${ico("party",14)} КОМНАТА`;$("lbBtn").innerHTML=`${ico("star",12)} РЕЙТИНГ`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
 
 /* =================== МИР / CANVAS =================== */
 const cv=$("cv"),cx=cv.getContext("2d");let W=0,H=0,DPR=1;
@@ -877,7 +901,7 @@ function finish(already){
   const grid=G.log.map(l=>tierOf(l.hit).e).join("");
   G.share=`ОРБИТА · ${G.title}\n▲ ${alt} км — ${lm}\n${grid}`;
   const e=$("end");
-  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div id="dSum"></div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
+  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div id="dSum"></div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>${G.mode==="daily"&&G.day===TODAY?`<div id="lbBox"></div>`:""}
    <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw)+(corrected(l.raw,l.hit)?` → ${esc(l.hit.label)}`:""):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
    <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} БЕСКОНЕЧНО</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ЕЩЁ ЗАПУСК</button>`}</div>
    <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>
@@ -889,11 +913,11 @@ function finish(already){
   if($("againBtn"))$("againBtn").onclick=()=>startGame(G.mode,{cat:G.cat});
   $("homeBtn").onclick=goHome;
   tickNext();
-  if(G.mode==="daily"&&G.day===TODAY)dailySummary(G);
+  if(G.mode==="daily"&&G.day===TODAY){dailySummary(G);lbEnd(G)}
 }
 // итог дня: счёт уходит на сервер (засчитывается первый), в ответ — место среди игроков и самый редкий ответ дня
+const plural=(n,a,b,c)=>{const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c};
 function dailySummary(g){
-  const plural=(n,a,b,c)=>{const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c};
   apiPost("/daily",{pid:pid(),day:g.day,score:g.score,qs:g.qs}).then(r=>r.ok?r.json():null).then(d=>{
     const el=$("dSum");if(!d||!el||G!==g)return;const lines=[];
     const others=(d.players|0)-1;
@@ -1276,6 +1300,93 @@ function roomEndPanel(){
   if(host)$("rAgain").onclick=()=>{SFX.click();$("rAgain").disabled=true;roomCall("again",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{toast("НЕ ВЫШЛО");if($("rAgain"))$("rAgain").disabled=false})};
 }
 
+/* =================== РЕЙТИНГ ДНЯ =================== */
+// Закончил сегодняшний запуск — лог уходит на сервер (один раз, только сегодняшний день), сервер сам пересчитывает очки.
+// Таблицы обновляются короткими запросами раз в 8 с, пока их видно.
+const lbKey=d=>"orb-d-"+dKey(dateOf(d));
+const lbLog=s=>(s.log||[]).map(l=>({qid:l.qid,raw:String(l.raw||"").slice(0,60),label:l.label?String(l.label).slice(0,60):null,pts:l.pts|0}));
+// сегодняшний запуск закончен, но ещё не в рейтинге
+const lbPending=()=>{const s=store.get(lbKey(TODAY));return!!(s&&s.done&&!s.lb)};
+async function lbPost(path,body,ms=8000){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms);
+  try{const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:ctl.signal});let d=null;try{d=await r.json()}catch(e){}return{status:r.status,d}}
+  catch(e){return{status:0,d:null}}finally{clearTimeout(t)}
+}
+// box — id блока, где спросить ник или показать ошибку; done() — после удачной отправки
+async function lbSubmit(box,done,name){
+  const s=store.get(lbKey(TODAY));if(!s||!s.done||s.lb)return done();
+  name=(name||nickOf()).trim();if(!name)return lbAskNick(box,done,"");
+  const el=$(box);if(!el)return;el.innerHTML=`<div class="next">ОТПРАВЛЯЮ В РЕЙТИНГ…</div>`;
+  const{status,d}=await lbPost("/lb/submit",{pid:pid(),day:TODAY,name,log:lbLog(s)},20000);
+  if(!$(box))return;
+  if(status===200&&d&&d.ok){const s2=store.get(lbKey(TODAY))||s;s2.lb={score:d.score};store.set(lbKey(TODAY),s2);if(!nickOf())store.set("orb-nick",name);return done()}
+  const e=d&&d.error;
+  if(e==="bad_name")return lbAskNick(box,done,"ЭТОТ НИК НЕ ПОДОЙДЁТ — ПРИДУМАЙ ДРУГОЙ");
+  const msg=e==="bad_set"?"ВОПРОСЫ ОБНОВИЛИСЬ — ОБНОВИ СТРАНИЦУ":e==="bad_request"?"ЭТОТ ЗАПУСК УЖЕ НЕЛЬЗЯ ОТПРАВИТЬ":e==="too_many"?"С ЭТОГО АДРЕСА СЕГОДНЯ УЖЕ МНОГО ЗАПИСЕЙ":"НЕ ВЫШЛО ОТПРАВИТЬ В РЕЙТИНГ";
+  const again=!e||e==="retry"||e==="busy"||e==="rate_limited";
+  $(box).innerHTML=`<div class="next">${msg}</div>${again?`<div class="rowBtns"><button class="btn small" id="lbRetry">ЕЩЁ РАЗ</button></div>`:""}`;
+  if(again)$("lbRetry").onclick=()=>{SFX.click();lbSubmit(box,done,name)};
+}
+function lbAskNick(box,done,msg){
+  const el=$(box);if(!el)return;
+  el.innerHTML=`<div class="lbhead"><b>РЕЙТИНГ ДНЯ · #${TODAY}</b></div><div class="next" style="margin-top:6px">${msg||"ПРИДУМАЙ НИК — И ТЫ В ТАБЛИЦЕ ДНЯ"}</div>
+   <label>ТВОЙ НИК</label><input class="nick" id="lbNick" maxlength="16" placeholder="например, Гагарин" value="${esc(nickOf())}">
+   <div class="rowBtns"><button class="btn hot" id="lbGo">${ico("star",12)} В РЕЙТИНГ</button></div>`;
+  const go=()=>{const v=$("lbNick").value.trim().slice(0,16);if(!v){$("lbNick").focus();toast("ВВЕДИ НИК");return}SFX.click();lbSubmit(box,done,v)};
+  $("lbGo").onclick=go;$("lbNick").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go()}};
+}
+// следим за таблицей, пока её видно: один таймер на блок
+const LBW={};
+function lbWatch(id,req,render){
+  lbUnwatch(id);const w={v:null};LBW[id]=w;
+  const tick=async()=>{
+    if(LBW[id]!==w)return;const el=$(id);if(!el||el.closest(".hidden")){lbUnwatch(id);return}
+    if(!document.hidden){const{status,d}=await lbPost("/lb",{...req,v:w.v});if(LBW[id]!==w||!$(id))return;
+      if(status===200&&d&&!d.same&&Array.isArray(d.top)){w.v=d.v;render(d)}else if(w.v==null&&!(status===200&&d&&d.same))render(null)}
+    w.t=setTimeout(tick,8000)};
+  tick();
+}
+function lbUnwatch(id){const w=LBW[id];if(w){clearTimeout(w.t);delete LBW[id]}}
+function lbRow(r,me){
+  return`<div class="lr ${me?"me":""}"><span class="pl ${r.p<=3?"g"+r.p:""}">#${r.p}</span><span class="nm ${r.name==null?"anon":""}">${r.name==null?"ПИЛОТ":esc(r.name.toUpperCase())}${me?" · ТЫ":""}${r.day?` <small>#${r.day}</small>`:""}</span><span class="tb">${(r.tiers||[]).map(p=>tierBadge(TIERS[p]||TIERS[0],10)).join("")}</span><span class="sc">${r.score} КМ</span></div>`;
+}
+// d — ответ /api/lb; o.title, o.mine (что показать, если тебя нет в таблице), o.score (свой счёт в игре), o.foot
+function lbTable(d,o={}){
+  if(!d)return`<div class="lbhead"><b>${o.title||"РЕЙТИНГ"}</b></div><div class="next">НЕТ СВЯЗИ С ЦУПОМ — ПРОБУЮ ЕЩЁ</div>${o.foot||""}`;
+  let h=`<div class="lbhead"><b>${o.title||"РЕЙТИНГ ДНЯ · #"+d.day}</b><small>${d.n} ${plural(d.n,"ПИЛОТ","ПИЛОТА","ПИЛОТОВ")}</small></div>`;
+  if(d.me&&d.me.hidden)h+=`<div class="lbnote">твоя запись скрыта модератором</div>`;
+  else if(d.me){h+=`<div class="lbme">ТЫ #${d.me.p} ИЗ ${d.n}</div>`;if(o.score!=null&&d.me.score!==o.score)h+=`<div class="lbnote">в рейтинге ${d.me.score} км — очки пересчитал сервер</div>`}
+  else if(o.mine)h+=o.mine;
+  const meIn=d.top.some(r=>r.me);
+  h+=d.top.length?d.top.map(r=>lbRow(r,!!r.me)).join(""):`<div class="next">ПОКА ПУСТО — СТАНЬ ПЕРВЫМ</div>`;
+  if(d.me&&!d.me.hidden&&!meIn)h+=`<div class="lr gap">· · ·</div>${lbRow(d.me,true)}`;
+  return h+(o.foot||"");
+}
+// итоговый экран сегодняшнего запуска: отправить (спросив ник), потом место и топ-10
+function lbEnd(g){
+  if(!$("lbBox"))return;
+  const view=()=>{if(G!==g)return;const foot=`<div class="rowBtns"><button class="btn small" id="lbAll">${ico("star",12)} ВЕСЬ РЕЙТИНГ</button></div>`;
+    lbWatch("lbBox",{kind:"day",day:TODAY,pid:pid(),lim:10},d=>{const b=$("lbBox");if(!b)return;b.innerHTML=lbTable(d,{score:g.score,foot});const a=$("lbAll");if(a)a.onclick=()=>lbScreen("day")})};
+  if(lbPending())lbSubmit("lbBox",view);else view();
+}
+// экран «РЕЙТИНГ»: сегодня / вчера / лучшие за неделю
+function lbScreen(tab){
+  const TABS=[["day","СЕГОДНЯ"],["yday","ВЧЕРА"],["week","НЕДЕЛЯ"]];
+  modal(`<h3>${ico("star",14)} РЕЙТИНГ</h3><div class="seg lbtabs" id="lbTabs">${TABS.map(([k,n])=>`<button class="btn small ${k===tab?"on":""}" data-t="${k}">${n}</button>`).join("")}</div>
+   <div id="lbModal"><div class="next">ЗАГРУЖАЮ…</div></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="lbClose">ЗАКРЫТЬ</button></div>`);
+  $("lbClose").onclick=()=>{SFX.click();show("modal",false)};
+  $("lbTabs").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{SFX.click();lbScreen(b.dataset.t)});
+  const s=store.get(lbKey(TODAY));
+  if(tab==="day"&&lbPending())return lbSubmit("lbModal",()=>lbScreen("day"));
+  let mine="";
+  if(tab==="day"&&!(s&&s.done))mine=`<div class="next">${s?"ДОЛЕТИ СЕГОДНЯШНИЙ ЗАПУСК":"СЫГРАЙ ЗАПУСК ДНЯ"} — И ТЫ В ТАБЛИЦЕ</div><div class="rowBtns"><button class="btn hot" id="lbPlay">${ico("rocket",12)} ${s?"ПРОДОЛЖИТЬ":"ИГРАТЬ"}</button></div>`;
+  const req=tab==="week"?{kind:"week",day:TODAY}:{kind:"day",day:tab==="yday"?TODAY-1:TODAY};
+  const title=tab==="week"?`ЛУЧШИЕ ЗА НЕДЕЛЮ · #${Math.max(1,TODAY-6)}–${TODAY}`:tab==="yday"?`ВЧЕРА · #${TODAY-1}`:`СЕГОДНЯ · #${TODAY}`;
+  if(tab==="yday"&&TODAY<2){$("lbModal").innerHTML=`<div class="next">ВЧЕРА ЗАПУСКОВ ЕЩЁ НЕ БЫЛО</div>`;return}
+  lbWatch("lbModal",{...req,pid:pid(),lim:20},d=>{const b=$("lbModal");if(!b)return;b.innerHTML=lbTable(d,{title,mine});const p=$("lbPlay");if(p)p.onclick=()=>{show("modal",false);startGame("daily")}});
+}
+
 /* =================== ГЛАВНАЯ / МЕНЮ =================== */
 function goHome(){
   SFX.click();stopClock();stopPoll();roomStop();show("opp",false);hideAll();G=null;show("hud",false);show("home",true);
@@ -1299,6 +1410,7 @@ $("startBtn").onclick=()=>startGame("daily");
 $("endlessBtn").onclick=()=>startGame("endless");
 $("duelBtn").onclick=()=>{SFX.click();duelMenu()};
 $("roomBtn").onclick=()=>{SFX.click();roomMenu()};
+$("lbBtn").onclick=()=>{SFX.click();lbScreen("day")};
 $("archBtn").onclick=()=>{SFX.click();archive()};
 $("packBtn").onclick=()=>{SFX.click();packs()};
 function archive(){let h="";for(let d=TODAY;d>=1;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));const dt=dateOf(d).toLocaleDateString("ru-RU",{day:"numeric",month:"short"});h+=`<button class="btn small" data-day="${d}"><span>#${d} · ${dt}${d===TODAY?" · СЕГОДНЯ":""}</span><small>${v&&v.done?v.score+" км":v?"не закончен":"не сыгран"}</small></button>`}
@@ -1310,13 +1422,14 @@ function packs(){const ic=CAT_ICON;
 $("menuBtn").onclick=()=>{SFX.click();modal(`<h3>МЕНЮ</h3><div class="mlist">
  <button class="btn small" id="mHow"><span>${ico("help",16)} КАК ИГРАТЬ</span></button>
  <button class="btn small" id="mDaily"><span>${ico("rocket",16)} ЗАПУСК ДНЯ</span><small>#${TODAY}</small></button>
+ <button class="btn small" id="mLb"><span>${ico("star",16)} РЕЙТИНГ ДНЯ</span></button>
  <button class="btn small" id="mArch"><span>${ico("clock",16)} АРХИВ</span></button>
  <button class="btn small" id="mPack"><span>${ico("grid",16)} ТЕМАТИЧЕСКИЕ НАБОРЫ</span></button>
  <button class="btn small" id="mEnd"><span>${ico("inf",16)} БЕСКОНЕЧНЫЙ РЕЖИМ</span></button>
  <button class="btn small" id="mDuel"><span>${ico("duel",16)} ДУЭЛЬ С ДРУГОМ</span></button>
  <button class="btn small" id="mRoom"><span>${ico("party",16)} КОМНАТА ДЛЯ КОМПАНИИ</span><small>до 30</small></button>
  <button class="btn small" id="mHome"><span>${ico("home",16)} НА ГЛАВНУЮ</span></button></div>`);
- $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mRoom").onclick=roomMenu;$("mHome").onclick=()=>{show("modal",false);goHome()}};
+ $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mRoom").onclick=roomMenu;$("mLb").onclick=()=>lbScreen("day");$("mHome").onclick=()=>{show("modal",false);goHome()}};
 $("sndBtn").onclick=()=>{muted=!muted;store.set("orb-mute",muted);setMuteUI();if(!muted){ac();SFX.click()}};
 addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&!$("res").contains(document.activeElement)){e.preventDefault();next()}});
 

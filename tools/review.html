@@ -39,7 +39,7 @@ textarea{width:100%;height:220px;background:var(--pn);color:var(--tx);border:1px
 <body>
 <header>
   <h1>Орбита · разметка</h1>
-  <span class="tabs"><button id="tabQ" class="on">Вопросы</button> <button id="tabAI">Ответы ИИ</button> <button id="tabPl">Ответы игроков</button> <button id="tabEx">Экспорт</button></span>
+  <span class="tabs"><button id="tabQ" class="on">Вопросы</button> <button id="tabAI">Ответы ИИ</button> <button id="tabPl">Ответы игроков</button> <button id="tabLb">Рейтинг</button> <button id="tabEx">Экспорт</button></span>
   <span class="mu" id="stat"></span>
 </header>
 <div class="wrap">
@@ -201,6 +201,35 @@ async function showPlQ(id){
     const ov=ovOf(q);ov.del=ov.del||[];if(!ov.del.some(x=>norm(x)===r.k))ov.del.push(r.k);ov.add=(ov.add||[]).filter(x=>norm(x[1])!==r.k);saveOV();showPlQ(id)});
 }
 
+/* ---------- рейтинг дня: модерация ---------- */
+// «скрыть запись» — убрать из таблицы; «скрыть ник» — запись остаётся, вместо ника «ПИЛОТ»; «запретить ник» — его больше не примут.
+let lbData=null,lbDay="";
+function showLb(){
+  tab="lb";nav();
+  $("main").innerHTML=`<h2 style="margin:4px 0">Рейтинг дня</h2><p class="mu">Очки в таблице — пересчитанные сервером; «заявлено» — что прислала игра. Скрытое видно только здесь.</p>
+   <div class="bar"><input id="au" placeholder="https://orbita.129-151-216-221.sslip.io/api" value="${esc(AI.url)}" style="width:320px"><input id="at" type="password" placeholder="ADMIN_TOKEN" value="${esc(AI.token)}" style="width:200px">
+   <input id="ld" placeholder="день (пусто — сегодня)" value="${esc(lbDay)}" style="width:170px"><button id="ll" class="ok">Загрузить</button></div><div id="lblist"></div>`;
+  $("ll").onclick=lbLoad;$("ld").onkeydown=e=>{if(e.key==="Enter")lbLoad()};
+  if(lbData)renderLb();
+}
+async function lbLoad(){
+  AI={url:$("au").value.trim(),token:$("at").value.trim()};LS.set("orbrev-ai",AI);lbDay=$("ld").value.trim();$("lblist").innerHTML=`<p class="mu">загружаю…</p>`;
+  try{lbData=await aiApi("/admin/lb"+(lbDay?"?day="+encodeURIComponent(lbDay):""));renderLb()}catch(e){$("lblist").innerHTML=`<p style="color:var(--hot)">ошибка: ${esc(e.message)}</p>`}
+}
+function renderLb(){
+  const it=lbData.items||[];let place=0;
+  $("lblist").innerHTML=`<p class="mu">день #${lbData.day} (сегодня #${lbData.today}) · записей: ${it.length} · скрыто: ${it.filter(x=>x.hidden).length}</p>
+   <table><tr><th>#</th><th>ник</th><th>км</th><th>заявлено</th><th>время</th><th>ответы</th><th></th></tr>
+   ${it.map((x,i)=>`<tr class="${x.hidden?"dl":""}"><td>${x.hidden?"—":++place}</td><td>${esc(x.name)}${x.noname?' <span class="src">ник скрыт</span>':""}</td><td>${x.score}</td><td class="${x.claimed!==x.score?"t15":"mu"}">${x.claimed}</td>
+    <td class="mu">${new Date(x.t).toLocaleTimeString("ru-RU")}</td>
+    <td class="al">${(x.log||[]).map(l=>`${l.raw?esc(l.raw):"—"}${l.label&&norm(l.label)!==norm(l.raw)?" → "+esc(l.label):""} <span class="t${l.pts}">+${l.pts}</span>${l.claim!=null?` <span class="t15">(было +${l.claim})</span>`:""}`).join("<br>")}</td>
+    <td style="white-space:nowrap"><button class="${x.hidden?"ok":"hot"}" data-h="${i}">${x.hidden?"вернуть":"скрыть запись"}</button> <button class="${x.noname?"ok":"hot"}" data-n="${i}">${x.noname?"вернуть ник":"скрыть ник"}</button> <button class="hot" data-b="${i}">запретить ник</button></td></tr>`).join("")}</table>`;
+  const set=async(i,body)=>{const x=it[i];try{const r=await aiApi("/admin/lb/set",{id:x.id,...body});x.hidden=r.hidden;x.noname=r.noname;if(body.ban)alert(`Ник «${x.name}» больше не примут`);renderLb()}catch(e){alert("сервер: "+e.message)}};
+  $("lblist").querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>set(+b.dataset.h,{hidden:!it[+b.dataset.h].hidden}));
+  $("lblist").querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>set(+b.dataset.n,{noname:!it[+b.dataset.n].noname}));
+  $("lblist").querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>{const x=it[+b.dataset.b];if(confirm(`Скрыть ник «${x.name}» и больше его не принимать?`))set(+b.dataset.b,{noname:true,ban:true})});
+}
+
 /* ---------- экспорт ---------- */
 function ovText(){
   const keys=Object.keys(OV).sort((a,b)=>Qs.findIndex(q=>q.q===a)-Qs.findIndex(q=>q.q===b));
@@ -217,9 +246,9 @@ function showEx(){
   $("rs").onclick=()=>{if(!confirm("Выбросить все несохранённые правки?"))return;OV=JSON.parse(JSON.stringify(window.ORB_OV||{}));saveOV();showEx()};
 }
 
-function route(){const h=location.hash.slice(1);if(h==="ai")showAI();else if(h==="ex")showEx();else if(h==="pl")showPl();else if(/^pl\d+$/.test(h))showPlQ(+h.slice(2));else{filt="";limit=300;showQ(Math.max(0,Math.min(Qs.length-1,+h||0)))}}
-function tabsUI(){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",(b.id==="tabAI"&&tab==="ai")||(b.id==="tabEx"&&tab==="ex")||(b.id==="tabPl"&&tab==="pl")||(b.id==="tabQ"&&tab==="q")))}
-$("qf").oninput=nav;$("tabQ").onclick=()=>{location.hash=String(cur)};$("tabAI").onclick=()=>{location.hash="ai"};$("tabPl").onclick=()=>{location.hash="pl"};$("tabEx").onclick=()=>{location.hash="ex"};
+function route(){const h=location.hash.slice(1);if(h==="ai")showAI();else if(h==="ex")showEx();else if(h==="pl")showPl();else if(h==="lb")showLb();else if(/^pl\d+$/.test(h))showPlQ(+h.slice(2));else{filt="";limit=300;showQ(Math.max(0,Math.min(Qs.length-1,+h||0)))}}
+function tabsUI(){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",(b.id==="tabAI"&&tab==="ai")||(b.id==="tabEx"&&tab==="ex")||(b.id==="tabPl"&&tab==="pl")||(b.id==="tabLb"&&tab==="lb")||(b.id==="tabQ"&&tab==="q")))}
+$("qf").oninput=nav;$("tabQ").onclick=()=>{location.hash=String(cur)};$("tabAI").onclick=()=>{location.hash="ai"};$("tabPl").onclick=()=>{location.hash="pl"};$("tabLb").onclick=()=>{location.hash="lb"};$("tabEx").onclick=()=>{location.hash="ex"};
 addEventListener("hashchange",()=>{route();tabsUI()});
 stat();route();
 </script>

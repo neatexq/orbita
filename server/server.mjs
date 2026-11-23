@@ -15,6 +15,9 @@
 // GET  /api/admin/answers         ?q=<id> — ответы игроков (без q — сводка по вопросам)
 // POST /api/admin/answers/del     {qid,label} — убрать мусорный ответ из статистики
 // /api/room/*                    комнаты для компании (см. раздел «комнаты»)
+// POST /api/lb/submit             рейтинг дня: отправить свой запуск (сервер пересчитывает очки)
+// POST /api/lb                    рейтинг дня / недели: таблица и своё место
+// GET  /api/admin/lb, POST /api/admin/lb/set — модерация рейтинга (см. раздел «рейтинг дня»)
 // GET  /api/health
 //
 // Настройки — переменные окружения (файл /etc/orbita/env): LLM_KEY, ADMIN_TOKEN,
@@ -59,6 +62,15 @@ CREATE TABLE IF NOT EXISTS ans_seen(day INTEGER NOT NULL, pid TEXT NOT NULL, q T
 CREATE TABLE IF NOT EXISTS ans_ip(day INTEGER NOT NULL, ip TEXT NOT NULL, q TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(day, ip, q));
 CREATE TABLE IF NOT EXISTS scores(day INTEGER NOT NULL, pid TEXT NOT NULL, score INTEGER NOT NULL, t INTEGER, PRIMARY KEY(day, pid));
 CREATE INDEX IF NOT EXISTS scores_day ON scores(day, score);
+-- рейтинг дня: одна запись на игрока в день, очки — пересчитанные сервером
+CREATE TABLE IF NOT EXISTS lb(id INTEGER PRIMARY KEY, day INTEGER NOT NULL, pid TEXT NOT NULL, name TEXT NOT NULL, score INTEGER NOT NULL,
+  pts TEXT NOT NULL, log TEXT NOT NULL, claimed INTEGER NOT NULL, t INTEGER NOT NULL, ip TEXT, hidden INTEGER NOT NULL DEFAULT 0,
+  noname INTEGER NOT NULL DEFAULT 0, UNIQUE(day, pid));
+CREATE INDEX IF NOT EXISTS lb_day ON lb(day, hidden, score, t);
+-- статистика игроков на начало дня (нижняя граница для проверки очков)
+CREATE TABLE IF NOT EXISTS lb_snap(day INTEGER NOT NULL, qid INTEGER NOT NULL, q TEXT NOT NULL, total INTEGER NOT NULL, keys TEXT NOT NULL, PRIMARY KEY(day, qid));
+-- ники, скрытые модератором, — больше не принимаются
+CREATE TABLE IF NOT EXISTS lb_ban(k TEXT PRIMARY KEY, t INTEGER);
 `);
 
 // ---------- утилиты ----------
@@ -824,6 +836,205 @@ setInterval(() => {
   }
 }, 10000).unref();
 
+// ---------- рейтинг дня ----------
+// POST /api/lb/submit {pid,day,name,log:[{qid,raw,label,pts}×7]}
+//   -> {ok,score,pts:[7],adjusted,place,n,name,already?}   400 bad_request|bad_set|bad_name, 429, 503 retry (ИИ не ответил)
+// POST /api/lb        {kind:"day"|"week",day,pid?,lim?,v?}
+//   -> {v,kind,day,n,top:[{p,name|null,score,tiers,me?,day?}],me:{p,score,tiers,name}|{hidden:1}|null}  или {same:1,v}, если v не менялась
+// GET  /api/admin/lb       ?day=N — все записи дня, вместе со скрытыми
+// POST /api/admin/lb/set   {id, hidden?:bool, noname?:bool, ban?:bool} — скрыть запись / ник (ban — ник больше не принимать)
+// Очки пересчитываются: вопросы должны совпасть с набором дня, каждый ответ проверяется так же, как в комнате,
+// а очки ответа должны укладываться в то, что давала статистика игроков в течение дня (между снимком на начало дня и текущей).
+// Не укладываются — срезаются вниз. В таблицу идёт сумма сервера, не клиента.
+const LB_NAME_MAX = 16, LB_PER_IP_DAY = 6, LB_LIM = 30;
+const NONCLEVER = [10, 30, 60, 85, 100], TIER_SET = new Set([0, 10, 15, 30, 60, 85, 100]);
+// набор дня — тот же генератор, что dailySet() в игре
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function dailySet(n) {
+  const r = rng(n * 7919 + 13), a = data().qs.map((_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, 7);
+}
+
+const qSnapGet = db.prepare('SELECT total, keys FROM lb_snap WHERE day=? AND qid=?');
+const qSnapPut = db.prepare('INSERT OR IGNORE INTO lb_snap(day,qid,q,total,keys) VALUES(?,?,?,?,?)');
+function snapDay(day) {
+  if (day < 1) return;
+  const D = data();
+  for (const qid of dailySet(day)) {
+    if (qSnapGet.get(day, qid)) continue;
+    const s = statSnap(qid);
+    qSnapPut.run(day, qid, D.qs[qid].q, s.total, JSON.stringify([...s.byKey]));
+  }
+}
+function snapOf(day, qid) {
+  let r = qSnapGet.get(day, qid);
+  if (!r) { snapDay(day); r = qSnapGet.get(day, qid); }
+  return r ? { total: r.total, byKey: new Map(JSON.parse(r.keys)) } : statSnap(qid);
+}
+// снимки на вчера/сегодня/завтра (у игроков восточнее Москвы «завтра» наступает раньше)
+function lbHousekeeping() {
+  const d = dayNow();
+  try { for (const x of [d - 1, d, d + 1]) snapDay(x); } catch (e) { console.error('orbita lb snap', e.message); }
+  db.prepare('DELETE FROM lb_snap WHERE day<?').run(d - 10);
+}
+lbHousekeeping(); setInterval(lbHousekeeping, 600e3).unref();
+
+// ---- ники: длина, символы, мат ----
+const CONTROL_G = new RegExp(CONTROL_RE.source, 'g');
+const INVIS_G = /[­​-‏‪-‮⁠-⁯﻿]/g;
+const NAME_CHARS_RE = /^[\p{L}\p{N} _\-.,!?'’*#№()]+$/u;
+const LOOK = { a: 'а', b: 'в', c: 'с', e: 'е', h: 'н', k: 'к', m: 'м', o: 'о', p: 'р', t: 'т', x: 'х', y: 'у', u: 'и', '3': 'з', '0': 'о', '6': 'б', '4': 'ч', '@': 'а', $: 'с' };
+const TRL = [['sch', 'щ'], ['sh', 'ш'], ['ch', 'ч'], ['zh', 'ж'], ['kh', 'х'], ['ts', 'ц'], ['ya', 'я'], ['ja', 'я'], ['yu', 'ю'], ['ju', 'ю'], ['yo', 'е'], ['y', 'й'],
+  ['a', 'а'], ['b', 'б'], ['c', 'к'], ['d', 'д'], ['e', 'е'], ['f', 'ф'], ['g', 'г'], ['h', 'х'], ['i', 'и'], ['j', 'й'], ['k', 'к'], ['l', 'л'], ['m', 'м'], ['n', 'н'],
+  ['o', 'о'], ['p', 'п'], ['q', 'к'], ['r', 'р'], ['s', 'с'], ['t', 'т'], ['u', 'у'], ['v', 'в'], ['w', 'в'], ['x', 'х'], ['z', 'з']];
+const BAD_FLAT = /ху[йеяюи]|пизд|п[еи]д[оа]р|педрил|ебан|ебат|ебал|ебло|еблан|ебуч|ебну|ебыр|заеб|уеб[аок]|выеб|наеб|проеб|долбоеб|мудак|мудил|г[ао]нд[оа]н|шлюх|залуп|дроч|минет|сперм|вагин|г[ао]вн|срак|жоп|дебил|гитлер|хитлер|нацист/;
+const BAD_WORD = /(^| )(бля|сук[аиу]|сучк|мраз|шалав|шмар|тварь|чмо)/;
+const BAD_LAT = /fuck|shit|bitch|cunt|whore|slut|nigg|faggot|porn|asshole|hitler|nazi/;
+function profane(name) {
+  const low = name.toLowerCase().replace(/ё/g, 'е');
+  if (BAD_LAT.test(low.replace(/[^a-z]/g, ''))) return true;
+  const tr = (s) => { let o = ''; for (let i = 0; i < s.length;) { const m = TRL.find(([l]) => s.startsWith(l, i)); if (m) { o += m[1]; i += m[0].length; } else { o += s[i++]; } } return o; };
+  const variants = [[...low].map((c) => LOOK[c] ?? c).join(''), tr(low)];
+  return variants.some((v) => {
+    const cyr = v.replace(/[^а-я ]/g, '').replace(/(.)\1+/g, '$1').replace(/\s+/g, ' ').trim();
+    return BAD_FLAT.test(cyr.replace(/ /g, '')) || BAD_WORD.test(cyr);
+  });
+}
+const qBanGet = db.prepare('SELECT 1 FROM lb_ban WHERE k=?');
+const banKey = (s) => gnorm(s).replace(/ /g, '');
+// null — ник не годится
+function lbName(s) {
+  const n = String(s ?? '').normalize('NFC').replace(INVIS_G, '').replace(CONTROL_G, '').replace(/\s+/g, ' ').trim().slice(0, LB_NAME_MAX).trim();
+  if (!n || !NAME_CHARS_RE.test(n) || !/[\p{L}\p{N}]/u.test(n) || profane(n)) return null;
+  if (banKey(n) && qBanGet.get(banKey(n))) return null;
+  return n;
+}
+
+// ---- пересчёт очков ----
+// диапазон «процента» ответа за день: статистика росла от снимка s0 до текущей s1, игрок видел что-то между ними.
+// n — сколько дали этот ответ, o — сколько ответили иначе; оба только растут. Процент растёт с n и падает с o,
+// так что крайние значения — в углах (n0,o1) и (n1,o0); при пустой статистике (T=0) игра берёт процент списка.
+function pctRange(prior, n0, T0, n1, T1) {
+  const nl = Math.min(n0, n1), nh = Math.max(n0, n1), o0 = Math.max(0, T0 - n0), o1 = Math.max(0, T1 - n1);
+  const ol = Math.min(o0, o1), oh = Math.max(o0, o1);
+  const pts = [[nl, oh], [nh, ol]];
+  if (nl === 0 && ol === 0) pts.push([0, 0], [0, Math.min(1, oh)], [Math.min(1, nh), 0]);
+  const ps = pts.map(([n, o]) => blendPct(prior, n, { total: n + o }));
+  return [Math.min(...ps), Math.max(...ps)];
+}
+const downTo = (claim) => [0, ...NONCLEVER].filter((p) => p <= claim).pop();
+async function lbItem(day, qid, it, ip) {
+  const raw = typeof it.raw === 'string' ? it.raw.trim().slice(0, MAX_A) : '';
+  const label = typeof it.label === 'string' && it.label.trim() ? it.label.trim().slice(0, MAX_A) : null;
+  const claim = TIER_SET.has(it.pts) ? it.pts : 0;
+  const zero = { qid, raw, label: null, pts: 0, claim };
+  if (!raw || claim === 0 || CONTROL_RE.test(raw) || (label && CONTROL_RE.test(label))) return zero;
+  const v = await judgeRoom(qid, raw, label, ip);
+  if (v && v.error) { const e = new Error('judge'); e.retry = true; throw e; }
+  if (!v) return zero;
+  if (v.clever) return { qid, raw, label: v.label, pts: claim >= 15 ? 15 : downTo(claim), claim };
+  const ix = answersOf(qid), s0 = snapOf(day, qid), s1 = statSnap(qid);
+  const [lo, hi] = pctRange(v.pct, countOf(s0, ix, v.a, v.label), s0.total, countOf(s1, ix, v.a, v.label), s1.total);
+  const top = tierPts({ pct: lo }), bottom = tierPts({ pct: hi });
+  const ok = NONCLEVER.filter((p) => p >= bottom && p <= top);
+  const pts = ok.includes(claim) ? claim : claim > top ? top : downTo(claim);
+  return { qid, raw, label: v.label, pts, claim };
+}
+
+let lbV = Date.now();
+const lbCache = new Map();
+const lbBusy = new Set();
+const qLbMine = db.prepare('SELECT * FROM lb WHERE day=? AND pid=?');
+const qLbIpCnt = db.prepare('SELECT COUNT(*) AS n FROM lb WHERE day=? AND ip=?');
+const qLbIns = db.prepare('INSERT OR IGNORE INTO lb(day,pid,name,score,pts,log,claimed,t,ip) VALUES(?,?,?,?,?,?,?,?,?)');
+const qLbAbove = db.prepare('SELECT COUNT(*) AS n FROM lb WHERE day=? AND hidden=0 AND (score>? OR (score=? AND (t<? OR (t=? AND id<?))))');
+const qLbCount = db.prepare('SELECT COUNT(*) AS n FROM lb WHERE day=? AND hidden=0');
+const qLbTop = db.prepare('SELECT id,pid,name,noname,score,pts,t FROM lb WHERE day=? AND hidden=0 ORDER BY score DESC, t ASC, id ASC LIMIT ?');
+const qLbWeek = db.prepare('SELECT id,pid,day,name,noname,score,pts,t FROM lb WHERE day BETWEEN ? AND ? AND hidden=0 ORDER BY score DESC, t ASC, id ASC');
+const lbRow = (r, p) => ({ p, name: r.noname ? null : r.name, score: r.score, tiers: JSON.parse(r.pts) });
+function placeIn(day, row) {
+  if (row.hidden) return { place: null, n: Number(qLbCount.get(day).n) };
+  return { place: Number(qLbAbove.get(day, row.score, row.score, row.t, row.t, row.id).n) + 1, n: Number(qLbCount.get(day).n) };
+}
+
+async function lbSubmit(b, ip) {
+  if (!b || !okPid(b.pid) || !Number.isInteger(b.day) || Math.abs(b.day - dayNow()) > 1 || !Array.isArray(b.log) || b.log.length !== 7) return [400, { ok: false, error: 'bad_request' }];
+  if (!limit('lbs:' + ip, 12)) return [429, { ok: false, error: 'rate_limited' }];
+  const set = dailySet(b.day);
+  if (!b.log.every((it, i) => it && typeof it === 'object' && it.qid === set[i])) return [400, { ok: false, error: 'bad_set' }];
+  const had = qLbMine.get(b.day, b.pid);
+  if (had) return [200, { ok: true, already: true, score: had.score, pts: JSON.parse(had.pts), name: had.name, ...placeIn(b.day, had) }];
+  const name = lbName(b.name);
+  if (!name) return [400, { ok: false, error: 'bad_name' }];
+  const ih = ipHash(ip);
+  if (Number(qLbIpCnt.get(b.day, ih).n) >= LB_PER_IP_DAY) return [429, { ok: false, error: 'too_many' }];
+  if (lbBusy.has(b.pid)) return [429, { ok: false, error: 'busy' }];
+  lbBusy.add(b.pid);
+  try {
+    const items = [];
+    try { for (let i = 0; i < 7; i++) items.push(await lbItem(b.day, set[i], b.log[i], ip)); }
+    catch (e) { if (e.retry) return [503, { ok: false, error: 'retry' }]; throw e; }
+    const pts = items.map((x) => x.pts), score = pts.reduce((a, x) => a + x, 0), claimed = items.reduce((a, x) => a + x.claim, 0);
+    const log = items.map((x) => ({ qid: x.qid, raw: x.raw, label: x.label, pts: x.pts, ...(x.claim !== x.pts ? { claim: x.claim } : {}) }));
+    qLbIns.run(b.day, b.pid, name, score, JSON.stringify(pts), JSON.stringify(log), claimed, Date.now(), ih);
+    lbV++; lbCache.clear();
+    const row = qLbMine.get(b.day, b.pid);
+    return [200, { ok: true, score: row.score, pts: JSON.parse(row.pts), adjusted: row.score !== claimed, name: row.name, ...placeIn(b.day, row) }];
+  } finally { lbBusy.delete(b.pid); }
+}
+
+function lbList(b, ip) {
+  if (!b || (b.kind !== 'day' && b.kind !== 'week') || !Number.isInteger(b.day) || b.day < 1 || b.day > dayNow() + 1) return [400, { ok: false, error: 'bad_request' }];
+  if (!limit('lbg:' + ip, 90)) return [429, { ok: false, error: 'rate_limited' }];
+  if (b.v === lbV) return [200, { same: 1, v: lbV }];
+  const lim = Math.min(Math.max(Number.isInteger(b.lim) ? b.lim : 10, 1), LB_LIM);
+  const pid = okPid(b.pid) ? b.pid : null;
+  const key = b.kind + ':' + b.day;
+  let c = lbCache.get(key);
+  if (!c) {
+    if (b.kind === 'day') c = { rows: qLbTop.all(b.day, LB_LIM), n: Number(qLbCount.get(b.day).n) };
+    else {
+      const seen = new Set(), rows = [];
+      for (const r of qLbWeek.all(b.day - 6, b.day)) if (!seen.has(r.pid)) { seen.add(r.pid); rows.push(r); }
+      c = { rows, n: rows.length };
+    }
+    if (lbCache.size > 20) lbCache.clear();
+    lbCache.set(key, c);
+  }
+  const top = c.rows.slice(0, lim).map((r, i) => ({ ...lbRow(r, i + 1), ...(b.kind === 'week' ? { day: r.day } : {}), ...(pid && r.pid === pid ? { me: 1 } : {}) }));
+  let me = null;
+  if (pid) {
+    if (b.kind === 'day') {
+      const r = qLbMine.get(b.day, pid);
+      if (r) me = r.hidden ? { hidden: 1 } : { ...lbRow(r, placeIn(b.day, r).place), name: r.name };
+    } else {
+      const i = c.rows.findIndex((r) => r.pid === pid);
+      if (i >= 0) me = { ...lbRow(c.rows[i], i + 1), name: c.rows[i].name, day: c.rows[i].day };
+    }
+  }
+  return [200, { v: lbV, kind: b.kind, day: b.day, n: c.n, top, me }];
+}
+
+function adminLb(url) {
+  const day = parseInt(url.searchParams.get('day'), 10) || dayNow();
+  const rows = db.prepare('SELECT id,day,name,score,claimed,pts,log,t,ip,hidden,noname FROM lb WHERE day=? ORDER BY score DESC, t ASC, id ASC').all(day);
+  return [200, { day, today: dayNow(), items: rows.map((r) => ({ ...r, hidden: !!r.hidden, noname: !!r.noname, pts: JSON.parse(r.pts), log: JSON.parse(r.log), ip: String(r.ip || '').slice(0, 8) })) }];
+}
+function adminLbSet(b) {
+  if (!b || !Number.isInteger(b.id)) return [400, { ok: false, error: 'bad_request' }];
+  const r = db.prepare('SELECT * FROM lb WHERE id=?').get(b.id);
+  if (!r) return [404, { ok: false, error: 'not_found' }];
+  if (typeof b.hidden === 'boolean') db.prepare('UPDATE lb SET hidden=? WHERE id=?').run(b.hidden ? 1 : 0, b.id);
+  if (typeof b.noname === 'boolean') db.prepare('UPDATE lb SET noname=? WHERE id=?').run(b.noname ? 1 : 0, b.id);
+  const k = banKey(r.name);
+  if (b.ban === true && k) db.prepare('INSERT OR IGNORE INTO lb_ban(k,t) VALUES(?,?)').run(k, Date.now());
+  if (b.ban === false && k) db.prepare('DELETE FROM lb_ban WHERE k=?').run(k);
+  lbV++; lbCache.clear();
+  const x = db.prepare('SELECT id,hidden,noname FROM lb WHERE id=?').get(b.id);
+  return [200, { ok: true, id: x.id, hidden: !!x.hidden, noname: !!x.noname, banned: !!(k && qBanGet.get(k)) }];
+}
+
 
 // ---------- HTTP ----------
 function readBody(req) {
@@ -873,7 +1084,7 @@ const server = http.createServer(async (req, res) => {
       if (st === 200) headers['Cache-Control'] = 'public, max-age=30';
       return send(st, v);
     }
-    const GETS = ['/admin/list', '/admin/answers'];
+    const GETS = ['/admin/list', '/admin/answers', '/admin/lb'];
     if (req.method !== 'POST' && !(GETS.includes(path) && req.method === 'GET')) return send(405, { error: 'method' });
     if (path.startsWith('/admin/')) {
       if (!isAdmin(req)) return send(401, { ok: false, error: 'unauthorized' });
@@ -881,6 +1092,8 @@ const server = http.createServer(async (req, res) => {
       if (path === '/admin/answers') return send(...adminAnswers(url));
       if (path === '/admin/set') return send(...adminSet(JSON.parse(await readBody(req))));
       if (path === '/admin/answers/del') return send(...adminAnswerDel(JSON.parse(await readBody(req))));
+      if (path === '/admin/lb') return send(...adminLb(url));
+      if (path === '/admin/lb/set') return send(...adminLbSet(JSON.parse(await readBody(req))));
       return send(404, { error: 'not_found' });
     }
     let body;
@@ -888,6 +1101,8 @@ const server = http.createServer(async (req, res) => {
     if (path === '/check') return send(...(await check(body, ip)));
     if (path === '/answer') return send(...answer(body, ip));
     if (path === '/daily') return send(...daily(body, ip));
+    if (path === '/lb') return send(...lbList(body, ip));
+    if (path === '/lb/submit') return send(...(await lbSubmit(body, ip)));
     const m = path.match(/^\/duel\/(orbita_duel_\w+)$/);
     if (m) return send(...duelRpc(m[1], body, ip));
     const rm = path.match(/^\/room\/(\w+)$/);
