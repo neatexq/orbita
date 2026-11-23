@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Орбита · разметка ответов</title>
+<style>
+:root{--bg:#0b1020;--pn:#141b33;--ln:#26304f;--tx:#e6edf7;--mu:#8d9bb8;--ac:#5ff3ff;--hot:#ff4f8b;--ok:#5ef38c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,sans-serif}
+header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{font-size:16px;margin:0 12px 0 0}
+button,select,input{font:inherit;color:var(--tx);background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:5px 9px}
+button{cursor:pointer}button:hover{border-color:var(--ac)}
+button.hot{border-color:var(--hot)}button.ok{border-color:var(--ok)}
+.wrap{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 54px)}
+nav{border-right:1px solid var(--ln);overflow:auto;max-height:calc(100vh - 54px);position:sticky;top:54px}
+nav input{width:calc(100% - 16px);margin:8px}
+nav a{display:flex;justify-content:space-between;gap:6px;padding:5px 10px;color:var(--tx);text-decoration:none;font-size:13px;border-left:3px solid transparent}
+nav a:hover{background:var(--pn)}nav a.on{border-left-color:var(--ac);background:var(--pn)}
+nav small{color:var(--mu);white-space:nowrap}
+main{padding:12px 16px;min-width:0}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+table{border-collapse:collapse;width:100%}
+td,th{border-bottom:1px solid var(--ln);padding:4px 6px;text-align:left;vertical-align:top}
+th{color:var(--mu);font-weight:500;font-size:12px}
+td.al{color:var(--mu);font-size:12px;max-width:420px}
+.src{font-size:11px;padding:1px 5px;border-radius:4px;background:#26304f;color:var(--mu)}
+.src.wd{background:#16384a;color:#8fe3ff}.src.ov{background:#3a2a10;color:#ffd54a}.src.ai{background:#2e1640;color:#e7a6ff}
+tr.ch td{background:#1d2440}tr.dl td{opacity:.4;text-decoration:line-through}
+.t10{color:#d7e3ee}.t15{color:#ffd54a}.t30{color:#5ef38c}.t60{color:#4fc3ff}.t85{color:#c77dff}.t100{color:#ff4fd8}
+.mu{color:var(--mu)}
+textarea{width:100%;height:220px;background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:6px;font:12px monospace}
+.tabs button.on{border-color:var(--ac);color:var(--ac)}
+@media (max-width:760px){.wrap{grid-template-columns:1fr}nav{position:static;max-height:240px;border-right:0;border-bottom:1px solid var(--ln)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Орбита · разметка</h1>
+  <span class="tabs"><button id="tabQ" class="on">Вопросы</button> <button id="tabAI">Ответы ИИ</button> <button id="tabEx">Экспорт</button></span>
+  <span class="mu" id="stat"></span>
+</header>
+<div class="wrap">
+  <nav><input id="qf" placeholder="поиск вопроса…"><div id="ql"></div></nav>
+  <main id="main"></main>
+</div>
+<script src="../data/q1.js"></script>
+<script src="../data/q2.js"></script>
+<script src="../data/q3.js"></script>
+<script src="../data/q4.js"></script>
+<script src="../data/q5.js"></script>
+<script src="../data/m1.js"></script>
+<script src="../data/m2.js"></script>
+<script src="../data/wd/index.js"></script>
+<script src="../data/overrides.js"></script>
+<script>
+"use strict";
+// Та же нормализация и разбор, что в index.html. Правки копятся в OV (черновик в localStorage),
+// «Экспорт» отдаёт готовый data/overrides.js — его кладут в репозиторий вместо старого.
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=s=>s.toLowerCase().replace(/ё/g,"е").replace(/\+\+/g," плюс плюс").replace(/#/g," шарп").replace(/[-‐–—]/g," ").replace(/[^a-zа-я0-9 ]/g,"").replace(/\s+/g," ").trim();
+const TIERS=[10,15,30,60,85,100];
+const ptsOf=a=>a.clever?15:a.pct>=15?10:a.pct>=6?30:a.pct>=2?60:a.pct>=1?85:100;
+const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+const MORE=window.ORB_MORE||{};
+const Qs=(window.ORB||[]).map(([cat,q,main,one="",zero=""],id)=>{
+  if(MORE[q])zero=zero?zero+", "+MORE[q]:MORE[q];
+  const a=[],map=new Map();
+  const add=(names,pct,clever,src)=>{const keys=[...new Set(names.map(norm).filter(Boolean))];if(!keys.length||map.has(keys[0]))return;const own=keys.filter(k=>!map.has(k));const x={label:names[0].trim(),keys:own,pct,clever,src};own.forEach(k=>map.set(k,x));a.push(x)};
+  main.split(",").forEach(x=>{x=x.trim();if(!x)return;const m=x.match(/^(.*?)\s+(\d+)(!?)$/);if(m)add(m[1].split("/"),+m[2],!!m[3],"pop");else add(x.split("/"),1,false,"pop")});
+  one.split(",").forEach(x=>{x=x.trim();if(x)add(x.split("/"),1,false,"1%")});
+  zero.split(",").forEach(x=>{x=x.trim();if(x)add(x.split("/"),0,false,"0%")});
+  return{id,cat,q,a,map,wd:false};
+});
+function mergeWD(q,d){
+  if(!d||d.q!==q.q||q.wd)return;q.wd=true;
+  for(const[pct,...names]of d.a){const keys=[...new Set(names.map(norm).filter(k=>k.length>1))];if(!keys.length)continue;
+    const ex=keys.map(k=>q.map.get(k)).find(Boolean);
+    if(ex){for(const k of keys)if(!q.map.has(k)){q.map.set(k,ex);ex.keys.push(k)}}
+    else{const x={label:names[0].trim(),keys,pct,clever:false,src:"wd"};keys.forEach(k=>q.map.set(k,x));q.a.push(x)}}
+}
+const loadWD=id=>{const v=(window.ORB_WD||{})[id];if(!v||Qs[id].wd)return Promise.resolve();return fetch(`../data/wd/${id}.json?v=${v}`).then(r=>r.ok?r.json():null).then(d=>mergeWD(Qs[id],d)).catch(()=>{})};
+
+// OV[вопрос] = {tier:{ключ:очки}, del:[ключи], add:[[очки, название, синонимы…]]}
+let OV=LS.get("orbrev-ov",null)||JSON.parse(JSON.stringify(window.ORB_OV||{}));
+const ovOf=q=>OV[q.q]||(OV[q.q]={});
+function saveOV(){for(const k in OV){const o=OV[k];if(o.tier&&!Object.keys(o.tier).length)delete o.tier;if(o.del&&!o.del.length)delete o.del;if(o.add&&!o.add.length)delete o.add;if(!Object.keys(o).length)delete OV[k]}LS.set("orbrev-ov",OV);stat()}
+function stat(){let n=0;for(const k in OV){const o=OV[k];n+=Object.keys(o.tier||{}).length+(o.del||[]).length+(o.add||[]).length}$("stat").textContent=n?`правок: ${n} (не забудь экспорт)`:"правок нет"}
+// ответы вопроса с учётом правок
+function rows(q){
+  const o=OV[q.q]||{},del=new Set((o.del||[]).map(norm)),out=q.a.map(a=>{const k=norm(a.label);const t=(o.tier||{})[k];return{a,k,base:ptsOf(a),pts:t??ptsOf(a),ch:t!=null,del:del.has(k)}});
+  (o.add||[]).forEach(([p,...names])=>{const k=norm(names[0]);if(!q.map.has(k))out.unshift({a:{label:names[0],keys:names.map(norm),src:"ov"},k,base:p,pts:p,ch:true,del:del.has(k),added:true})});
+  return out;
+}
+
+let cur=0,filt="",onlyCh=false,limit=300,tab="q";
+function nav(){
+  const f=norm($("qf").value);
+  $("ql").innerHTML=Qs.filter(q=>!f||norm(q.q).includes(f)).map(q=>{const o=OV[q.q];const n=o?Object.keys(o.tier||{}).length+(o.del||[]).length+(o.add||[]).length:0;
+    return`<a href="#${q.id}" class="${q.id===cur&&tab==="q"?"on":""}"><span>${q.id}. ${esc(q.q)}</span><small>${window.ORB_WD&&ORB_WD[q.id]?"WD ":""}${n?"✎"+n:""}</small></a>`}).join("");
+}
+async function showQ(id){
+  tab="q";cur=id;nav();const q=Qs[id];$("main").innerHTML=`<p class="mu">загружаю…</p>`;await loadWD(id);
+  const R=rows(q),f=norm(filt);const list=R.filter(r=>(!f||r.k.includes(f)||r.a.keys.some(k=>k.includes(f)))&&(!onlyCh||r.ch||r.del));
+  list.sort((x,y)=>(y.a.pct??-1)-(x.a.pct??-1));
+  const cnt={};R.forEach(r=>{if(!r.del)cnt[r.pts]=(cnt[r.pts]||0)+1});
+  $("main").innerHTML=`<h2 style="margin:4px 0">${id}. ${esc(q.q)}</h2>
+   <div class="mu">ответов: ${R.length}${q.wd?" (вместе с Wikidata)":""} · ${TIERS.map(t=>`<span class="t${t}">+${t}: ${cnt[t]||0}</span>`).join(" · ")}</div>
+   <div class="bar"><input id="ff" placeholder="фильтр ответов…" value="${esc(filt)}"> <label><input type="checkbox" id="oc" ${onlyCh?"checked":""}> только правки</label>
+   <span style="flex:1"></span><input id="nl" placeholder="новый ответ/синоним/…" style="width:220px"><select id="np">${TIERS.map(t=>`<option ${t===85?"selected":""}>${t}</option>`).join("")}</select><button id="nb" class="ok">Добавить</button></div>
+   <table><tr><th>ответ</th><th>синонимы</th><th>источник</th><th>очки</th><th></th></tr>
+   ${list.slice(0,limit).map((r,i)=>`<tr class="${r.ch?"ch":""} ${r.del?"dl":""}"><td>${esc(r.a.label)}</td><td class="al">${esc(r.a.keys.filter(k=>k!==r.k).slice(0,6).join(", "))}</td>
+    <td><span class="src ${r.a.src==="wd"?"wd":r.a.src==="ov"?"ov":""}">${r.a.src==="wd"?"wikidata":r.a.src==="ov"?"добавлен":r.a.src==="pop"?r.a.pct+"%":r.a.src}</span></td>
+    <td><select data-i="${i}" class="t${r.pts}">${TIERS.map(t=>`<option ${t===r.pts?"selected":""}>${t}</option>`).join("")}</select></td>
+    <td><button data-d="${i}" class="${r.del?"ok":"hot"}">${r.del?"вернуть":"убрать"}</button></td></tr>`).join("")}</table>
+   ${list.length>limit?`<div class="bar"><button id="more">показать ещё (${list.length-limit})</button></div>`:""}`;
+  const o=()=>ovOf(q);
+  $("main").querySelectorAll("select[data-i]").forEach(s=>s.onchange=()=>{const r=list[+s.dataset.i],p=+s.value;
+    if(r.added){const e=o().add.find(x=>norm(x[1])===r.k);if(e)e[0]=p}
+    else{o().tier=o().tier||{};if(p===r.base)delete o().tier[r.k];else o().tier[r.k]=p}saveOV();showQ(id)});
+  $("main").querySelectorAll("button[data-d]").forEach(b=>b.onclick=()=>{const r=list[+b.dataset.d];o().del=o().del||[];
+    if(r.del)o().del=o().del.filter(k=>norm(k)!==r.k);
+    else if(r.added)o().add=o().add.filter(x=>norm(x[1])!==r.k);
+    else o().del.push(r.k);saveOV();showQ(id)});
+  $("ff").oninput=e=>{filt=e.target.value;clearTimeout(window.fT);window.fT=setTimeout(()=>{limit=300;showQ(id).then(()=>{const x=$("ff");x.focus();x.setSelectionRange(x.value.length,x.value.length)})},250)};
+  $("oc").onchange=e=>{onlyCh=e.target.checked;showQ(id)};
+  $("nb").onclick=()=>{const names=$("nl").value.split("/").map(s=>s.trim()).filter(Boolean);if(!names.length)return;
+    const k=norm(names[0]);o().del=(o().del||[]).filter(x=>norm(x)!==k);
+    if(q.map.has(k)){o().tier=o().tier||{};o().tier[norm(q.map.get(k).label)]=+$("np").value}else{o().add=o().add||[];o().add.push([+$("np").value,...names])}saveOV();showQ(id)};
+  if($("more"))$("more").onclick=()=>{limit+=500;showQ(id)};
+}
+
+/* ---------- ответы, принятые ИИ (из KV воркера) ---------- */
+let AI=LS.get("orbrev-ai",{url:"",token:""}),aiItems=[];
+async function aiApi(path,body){
+  const r=await fetch(AI.url.replace(/\/+$/,"")+path,{method:body?"POST":"GET",headers:{Authorization:"Bearer "+AI.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+  if(!r.ok)throw new Error(r.status+" "+await r.text());return r.json();
+}
+const AI_PTS={1:30,2:60,3:85,4:100,5:100};
+function showAI(){
+  tab="ai";nav();
+  $("main").innerHTML=`<h2 style="margin:4px 0">Ответы, засчитанные ИИ</h2>
+   <p class="mu">Адрес воркера и ADMIN_TOKEN хранятся только в этом браузере. «Одобрить» добавляет ответ в правки (в игре он будет находиться сразу, без ИИ), «Отклонить» — убирает его из игры и помечает в KV как неверный.</p>
+   <div class="bar"><input id="au" placeholder="https://orbita-check….workers.dev" value="${esc(AI.url)}" style="width:320px"><input id="at" type="password" placeholder="ADMIN_TOKEN" value="${esc(AI.token)}" style="width:200px"><button id="al" class="ok">Загрузить</button><label><input type="checkbox" id="aall"> и отклонённые</label></div><div id="alist"></div>`;
+  $("al").onclick=async()=>{AI={url:$("au").value.trim(),token:$("at").value.trim()};LS.set("orbrev-ai",AI);$("alist").innerHTML=`<p class="mu">загружаю…</p>`;
+    try{aiItems=[];let cursor="";do{const d=await aiApi(`/admin/list?${$("aall").checked?"":"ok=1&"}cursor=${encodeURIComponent(cursor)}`);aiItems.push(...(d.items||[]));cursor=d.cursor||""}while(cursor&&aiItems.length<5000);renderAI()}
+    catch(e){$("alist").innerHTML=`<p style="color:var(--hot)">ошибка: ${esc(e.message)}</p>`}};
+  if(aiItems.length)renderAI();
+}
+function aiState(it){const q=Qs.find(x=>x.q===it.q);if(!q)return"вопрос не найден";const o=OV[q.q]||{},k=norm(it.label||it.a);
+  if((o.del||[]).some(x=>norm(x)===k||norm(x)===norm(it.a)))return"отклонён";if((o.add||[]).some(x=>norm(x[1])===k)||q.map.has(k))return"в списке";return""}
+function renderAI(){
+  const items=aiItems.slice().sort((a,b)=>(b.t||0)-(a.t||0));
+  $("alist").innerHTML=`<p class="mu">записей: ${items.length}</p><table><tr><th>вопрос</th><th>ответ игрока</th><th>название</th><th>ИИ</th><th>очки</th><th>статус</th><th></th></tr>
+   ${items.map((it,i)=>{const st=aiState(it);return`<tr><td>${esc(it.q)}</td><td>${esc(it.a)}</td><td>${esc(it.label||"")}</td><td>${it.ok?"да":"нет"}${it.manual?" (вручную)":""} · ${it.rarity||"-"}</td>
+     <td><select id="ap${i}">${TIERS.map(t=>`<option ${t===(AI_PTS[it.rarity]||85)?"selected":""}>${t}</option>`).join("")}</select></td><td class="mu">${st}</td>
+     <td><button class="ok" data-ok="${i}">одобрить</button> <button class="hot" data-no="${i}">отклонить</button></td></tr>`}).join("")}</table>`;
+  const qOf=it=>Qs.find(x=>x.q===it.q);
+  $("alist").querySelectorAll("[data-ok]").forEach(b=>b.onclick=async()=>{const it=items[+b.dataset.ok],q=qOf(it);if(!q)return;const o=ovOf(q),label=it.label||it.a,k=norm(label);
+    o.del=(o.del||[]).filter(x=>norm(x)!==k&&norm(x)!==norm(it.a));
+    if(!q.map.has(k)){o.add=(o.add||[]).filter(x=>norm(x[1])!==k);o.add.push([+$("ap"+b.dataset.ok).value,label,...(norm(it.a)!==k?[it.a]:[])])}
+    saveOV();if(!it.ok)try{await aiApi("/admin/set",{key:it.key,ok:true});it.ok=true}catch(e){alert("KV: "+e.message)}renderAI()});
+  $("alist").querySelectorAll("[data-no]").forEach(b=>b.onclick=async()=>{const it=items[+b.dataset.no],q=qOf(it);if(!q)return;const o=ovOf(q);
+    o.add=(o.add||[]).filter(x=>norm(x[1])!==norm(it.label||it.a));o.del=o.del||[];for(const s of[it.a,it.label])if(s&&!o.del.some(x=>norm(x)===norm(s)))o.del.push(norm(s));
+    saveOV();try{await aiApi("/admin/set",{key:it.key,ok:false});it.ok=false}catch(e){alert("KV: "+e.message)}renderAI()});
+}
+
+/* ---------- экспорт ---------- */
+function ovText(){
+  const keys=Object.keys(OV).sort((a,b)=>Qs.findIndex(q=>q.q===a)-Qs.findIndex(q=>q.q===b));
+  return`// Ручные правки ответов поверх списков. Делаются в tools/review.html → «Экспорт».
+// Ключ — точный текст вопроса. tier: {ответ: очки 10/15/30/60/85/100}, del: [убрать и не засчитывать], add: [[очки, "название", "синоним", ...]]
+window.ORB_OV={\n${keys.map(k=>`${JSON.stringify(k)}:${JSON.stringify(OV[k])}`).join(",\n")}\n};\n`;
+}
+function showEx(){
+  tab="ex";nav();const t=ovText();
+  $("main").innerHTML=`<h2 style="margin:4px 0">Экспорт data/overrides.js</h2><p class="mu">Скачай файл и замени им data/overrides.js в репозитории (или отдай Claude). Черновик правок живёт в этом браузере, пока его не сбросишь.</p>
+   <div class="bar"><button class="ok" id="dl">Скачать overrides.js</button><button id="cp">Скопировать</button><button class="hot" id="rs">Сбросить черновик к файлу</button></div><textarea readonly>${esc(t)}</textarea>`;
+  $("dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/javascript"}));a.download="overrides.js";a.click()};
+  $("cp").onclick=()=>navigator.clipboard.writeText(t).then(()=>$("cp").textContent="Скопировано");
+  $("rs").onclick=()=>{if(!confirm("Выбросить все несохранённые правки?"))return;OV=JSON.parse(JSON.stringify(window.ORB_OV||{}));saveOV();showEx()};
+}
+
+function route(){const h=location.hash.slice(1);if(h==="ai")showAI();else if(h==="ex")showEx();else{filt="";limit=300;showQ(Math.max(0,Math.min(Qs.length-1,+h||0)))}}
+$("qf").oninput=nav;$("tabQ").onclick=()=>{location.hash=String(cur)};$("tabAI").onclick=()=>{location.hash="ai"};$("tabEx").onclick=()=>{location.hash="ex"};
+addEventListener("hashchange",()=>{route();document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",(b.id==="tabAI"&&tab==="ai")||(b.id==="tabEx"&&tab==="ex")||(b.id==="tabQ"&&tab==="q")))});
+stat();route();
+</script>
+</body>
+</html>

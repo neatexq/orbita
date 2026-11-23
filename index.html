@@ -93,6 +93,9 @@ canvas{position:fixed;inset:0;display:block;image-rendering:pixelated}
 #go{height:58px}
 #err{position:fixed;left:50%;bottom:calc(clamp(14px,4vh,36px) + 70px);transform:translateX(-50%);font-family:"Press Start 2P";font-size:9px;color:var(--hot);text-shadow:0 0 8px var(--hot),0 1px 0 #000;opacity:0;transition:opacity .2s;white-space:nowrap;z-index:6}
 #err.on{opacity:1}
+#err.chk{color:var(--cy);text-shadow:0 0 8px var(--cy),0 1px 0 #000;animation:blink .8s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+#res .fix{font-size:12px;color:var(--cy);margin-top:8px}
 #count{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:"Press Start 2P";font-size:clamp(40px,10vw,90px);color:#fff;text-shadow:4px 0 var(--hot),-4px 0 var(--cy);pointer-events:none;z-index:7}
 .pop{animation:pop .9s ease-out both}
 @keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(2.4)}25%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.8)}}
@@ -246,6 +249,8 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 <script src="data/q5.js"></script>
 <script src="data/m1.js"></script>
 <script src="data/m2.js"></script>
+<script src="data/wd/index.js"></script>
+<script src="data/overrides.js"></script>
 <script>
 "use strict";
 /* =================== ДАННЫЕ =================== */
@@ -286,15 +291,50 @@ const norm=s=>s.toLowerCase().replace(/ё/g,"е").replace(/\+\+/g," плюс п�
 const stem=s=>s.split(" ").map(w=>w.length>4?w.replace(/(ями|ами|ого|его|ой|ей|ий|ый|ая|яя|ое|ее|ые|ие|ов|ев|ок|ек|ы|и|а|я|о|е|ь|у|ю|й)$/,""):w).join(" ");
 // data/m*.js — дополнительные настоящие ответы (0%, «один на миллион»), ключ = текст вопроса
 const MORE=window.ORB_MORE||{};
-const Qs=(window.ORB||[]).map(([cat,q,main,one="",zero=""],id)=>{
-  if(MORE[q])zero=zero?zero+", "+MORE[q]:MORE[q];
-  const a=[],seen=new Set();
-  const add=(names,pct,clever)=>{const keys=names.map(norm).filter(Boolean);if(!keys.length||seen.has(keys[0]))return;keys.forEach(k=>seen.add(k));a.push({label:names[0].trim(),keys,stems:keys.map(stem),pct,clever})};
-  main.split(",").forEach(x=>{x=x.trim();if(!x)return;const m=x.match(/^(.*?)\s+(\d+)(!?)$/);if(m)add(m[1].split("/"),+m[2],!!m[3]);else add(x.split("/"),1,false)});
-  one.split(",").forEach(x=>{x=x.trim();if(x)add(x.split("/"),1,false)});
-  zero.split(",").forEach(x=>{x=x.trim();if(x)add(x.split("/"),0,false)});
-  return{id,cat,q,a};
+// q.map: нормализованный ключ → ответ. Ручные списки: повтор первого ключа пропускаем, лишние ключи не дублируем
+function addAns(q,names,pct,clever,src){
+  const keys=[...new Set(names.map(norm).filter(Boolean))];if(!keys.length||q.map.has(keys[0]))return null;
+  const own=keys.filter(k=>!q.map.has(k));const a={label:names[0].trim(),keys:own,stems:own.map(stem),pct,clever,src};
+  own.forEach(k=>q.map.set(k,a));q.a.push(a);q.ix=null;return a;
+}
+const Qs=(window.ORB||[]).map(([cat,qt,main,one="",zero=""],id)=>{
+  if(MORE[qt])zero=zero?zero+", "+MORE[qt]:MORE[qt];
+  const q={id,cat,q:qt,a:[],map:new Map(),del:new Set(),ix:null};
+  main.split(",").forEach(x=>{x=x.trim();if(!x)return;const m=x.match(/^(.*?)\s+(\d+)(!?)$/);if(m)addAns(q,m[1].split("/"),+m[2],!!m[3]);else addAns(q,x.split("/"),1,false)});
+  one.split(",").forEach(x=>{x=x.trim();if(x)addAns(q,x.split("/"),1,false)});
+  zero.split(",").forEach(x=>{x=x.trim();if(x)addAns(q,x.split("/"),0,false)});
+  return q;
 });
+// очки уровня → «процент» (обратная к tierOf)
+const PCT_OF={10:15,15:0,30:6,60:2,85:1,100:0};
+// ручные правки поверх списков (data/overrides.js, делается в tools/review.html): tier — очки, del — убрать и не засчитывать
+function applyOv(q){
+  const o=(window.ORB_OV||{})[q.q];if(!o)return;
+  (o.add||[]).forEach(([p,...names])=>{if(!names.some(n=>q.map.has(norm(n))))addAns(q,names,PCT_OF[p]??0,p===15,"ov")});
+  for(const[k,p]of Object.entries(o.tier||{})){const a=q.map.get(norm(k));if(a){a.pct=PCT_OF[p]??a.pct;a.clever=p===15}}
+  (o.del||[]).forEach(k=>{k=norm(k);q.del.add(k);const a=q.map.get(k);if(!a)return;q.a.splice(q.a.indexOf(a),1);a.keys.forEach(x=>q.map.delete(x));q.ix=null});
+}
+Qs.forEach(applyOv);
+// полные списки из Wikidata (data/wd/<id>.json) грузятся лениво перед вопросом.
+// Совпавший с ручным ответ только добавляет ему синонимы, процент остаётся ручным.
+function mergeWD(q,d){
+  if(!d||d.q!==q.q||q.wd)return;q.wd=true;
+  for(const[pct,...names]of d.a){
+    const keys=[...new Set(names.map(norm).filter(k=>k.length>1))];if(!keys.length||keys.some(k=>q.del.has(k)))continue;
+    const ex=keys.map(k=>q.map.get(k)).find(Boolean);
+    if(ex){for(const k of keys)if(!q.map.has(k)){q.map.set(k,ex);ex.keys.push(k);ex.stems.push(stem(k))}}
+    else{const a={label:names[0].trim(),keys,stems:keys.map(stem),pct,clever:false,src:"wd"};keys.forEach(k=>q.map.set(k,a));q.a.push(a)}
+  }
+  q.ix=null;applyOv(q);
+}
+const WD_P={};
+function loadWD(id){
+  const q=Qs[id];if(!q||q.wd)return Promise.resolve();
+  const v=(window.ORB_WD||{})[id];if(!v)return Promise.resolve();
+  return WD_P[id]||(WD_P[id]=fetch(`data/wd/${id}.json?v=${v}`).then(r=>r.ok?r.json():null).then(d=>mergeWD(q,d)).catch(()=>{delete WD_P[id]}));
+}
+// ждём список, но не дольше ms — без него вопрос всё равно играбелен
+function readyWD(id,ms=4000){return Promise.race([loadWD(id),new Promise(r=>setTimeout(r,ms))])}
 
 const TIERS={
  0:{p:0,  n:"МИМО ОРБИТЫ",   f:"Двигатель так и не запустился.",                     c:"#7d8ea3",e:"×"},
@@ -329,23 +369,50 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const rand=(a,b)=>a+Math.random()*(b-a);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+// расстояние Дамерау–Левенштейна (перестановка соседних букв = 1 ошибка) с ранним выходом, если уже больше max
+function dl(a,b,max){
+  const m=a.length,n=b.length;if(Math.abs(m-n)>max)return max+1;
+  let p2=null,p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];let lo=i;
+    for(let j=1;j<=n;j++){let v=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));
+      if(p2&&i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])v=Math.min(v,p2[j-2]+1);c[j]=v;if(v<lo)lo=v}
+    if(lo>max)return max+1;p2=p;p=c}
+  return p[n];
+}
+// допустимо опечаток: короткие слова — только точно
+const tolOf=len=>len>=8?2:len>=5?1:0;
+// индекс вопроса: ключи и основы, разложенные по длине — нечёткий поиск смотрит только соседние длины
+function qIndex(q){
+  if(q.ix)return q.ix;
+  const byLen=new Map(),stems=new Map();
+  const put=(M,k,a)=>{let l=M.get(k.length);if(!l)M.set(k.length,l=[]);l.push([k,a])};
+  for(const a of q.a){a.keys.forEach(k=>put(byLen,k,a));a.stems.forEach(s=>{if(s.length>=3)put(stems,s,a)})}
+  return q.ix={byLen,stems};
+}
+function fuzzy(M,n,tolFn,strict){
+  let best=null,bd=9,bp=-1;
+  for(let L=n.length-2;L<=n.length+2;L++){const arr=M.get(L);if(!arr)continue;
+    for(const[k,a]of arr){const tol=tolFn(k.length);if(!tol&&k!==n)continue;if(Math.abs(L-n.length)>tol)continue;
+      // большие списки из Wikidata: первая буква должна совпасть — меньше ложных попаданий
+      if(strict&&a.src==="wd"&&k[0]!==n[0])continue;
+      const d=k===n?0:dl(k,n,tol);if(d<=tol&&(d<bd||(d===bd&&a.pct>bp))){bd=d;best=a;bp=a.pct}}}
+  return best;
+}
 function findAns(q,raw){
-  const n=norm(raw);if(!n)return null;
+  const n=norm(raw);if(!n||q.del.has(n))return null;
   // «гта 5», «дота 2» — номер части не делает популярный ответ редким
   const base=n.replace(/(?<=[a-zа-я]) ?[0-9]+( [0-9]+)*$/,"");
-  if(base!==n)for(const a of q.a)if(a.pct>0&&a.keys.includes(base))return a;
-  for(const a of q.a)if(a.keys.includes(n))return a;
-  let best=null,bd=9;
-  for(const a of q.a)for(const k of a.keys){const tol=k.length>=8?2:k.length>=5?1:0;const d=lev(k,n);if(d<=tol&&d<bd){bd=d;best=a}}
-  if(best)return best;
-  const sn=stem(n);
-  for(const a of q.a)for(const s of a.stems){if(s.length<3)continue;const d=s===sn?0:lev(s,sn);if(d<=(s.length>=5?1:0)&&d<bd){bd=d;best=a}}
-  if(best)return best;
+  if(base!==n){const a=q.map.get(base);if(a&&a.pct>0)return a}
+  const ex=q.map.get(n);if(ex)return ex;
+  const ix=qIndex(q);
+  const f=fuzzy(ix.byLen,n,tolOf,true);if(f)return f;
+  const s=fuzzy(ix.stems,stem(n),len=>len>=5?1:0,true);if(s)return s;
   const words=n.split(" ");
-  if(words.length>1)for(const a of q.a)for(const k of a.keys)if(!k.includes(" ")&&k.length>=4&&words.includes(k))return a;
+  if(words.length>1)for(const a of q.a)if(a.src!=="wd")for(const k of a.keys)if(!k.includes(" ")&&k.length>=4&&words.includes(k))return a;
   return null;
 }
+// игрок написал не так, как называется ответ → покажем «засчитано как …»
+const corrected=(raw,hit)=>!!(hit&&raw&&norm(raw)!==norm(hit.label));
 // свободный «конкретный» ответ: модель/серийник (буквы+цифры) в вопросах про технику
 const KB=["qwertyuiop","asdfghjkl","zxcvbnm","йцукенгшщзхъ","фывапролджэ","ячсмитьбю"];
 function junkWord(w){
@@ -558,8 +625,13 @@ function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function 
 function setHud(){if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
 
 function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):G.mode==="duel"?"orb-du-"+G.duel.code:null}
-function save(done){const k=storeKey();if(!k)return;const log=G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts}));store.set(k,{...(store.get(k)||{}),i:G.i,score:G.score,log,done});if(G.mode==="duel")duelPush(G.duel.code,G.duel.token,log.length,G.score,log,done)}
-function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];const hit=l.label?(!l.free&&q.a.find(a=>a.label===l.label))||mkFree(l.label):null;return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
+// в лог пишем каноническое название; p — «процент» ответа, ai — засчитан проверкой ИИ
+function save(done){const k=storeKey();if(!k)return;const log=G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts,...(l.hit?{p:l.hit.pct}:{}),...(l.hit&&l.hit.ai?{ai:1}:{})}));store.set(k,{...(store.get(k)||{}),i:G.i,score:G.score,log,done});if(G.mode==="duel")duelPush(G.duel.code,G.duel.token,log.length,G.score,log,done)}
+// старые сохранения без p тоже читаются: уровень восстанавливаем по очкам, если список ещё не загружен или поменялся
+function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];let hit=null;
+  if(l.label){const f=!l.free&&q&&q.map.get(norm(l.label));
+    hit=f&&tierOf(f).p===l.pts?f:{...mkFree(l.label),free:!!l.free,ai:!!l.ai,pct:l.p!=null&&tierOf({pct:l.p}).p===l.pts?l.p:(PCT_OF[l.pts]??0),clever:l.pts===15}}
+  return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
 
 function startGame(mode,opt={}){
   ac();SFX.click();
@@ -569,7 +641,7 @@ function startGame(mode,opt={}){
   else if(mode==="pack"){qs=shuffle(Qs.filter(q=>q.cat===opt.cat).map(q=>q.id),Math.random).slice(0,7);title=CATS[opt.cat].toUpperCase()}
   else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=`БЕСКОНЕЧНЫЙ #${n}`}
   stopPoll();show("opp",false);
-  G={mode,day,qs,i:0,score:0,log:[],title};
+  G={mode,day,qs,i:0,score:0,log:[],title};prefetch();
   if(mode==="duel"){const s=store.get("orb-du-"+opt.code)||{};G.duel={code:opt.code,token:s.t};
     if(s.log&&s.log.length){G.log=restoreLog(s);G.i=s.log.length;G.score=s.score;if(s.done||G.i>=7){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем дуэль — второго шанса нет")}
     startPoll();}
@@ -587,8 +659,14 @@ function enterGameView(instant){
 }
 // бесконечный: вопросы не повторяются, пока не кончатся все 100, потом новая перетасовка
 function ensurePool(){if(G.i<G.qs.length)return;const last=G.qs[G.qs.length-1];const s=shuffle(Qs.map(q=>q.id),Math.random);if(s[0]===last&&s.length>1)[s[0],s[1]]=[s[1],s[0]];G.qs.push(...s)}
+// следующие вопросы подгружаем заранее: весь набор из 7, в бесконечном — ближайшие три
+function prefetch(){if(G)G.qs.slice(G.i,G.i+(G.mode==="endless"?3:7)).forEach(loadWD)}
 function askQ(){
   if(G.mode==="endless")ensurePool();
+  prefetch();const g=G,i=G.i;
+  readyWD(G.qs[G.i]).then(()=>{if(G===g&&G.i===i&&!G.log[i])showQ()});
+}
+function showQ(){
   const q=Qs[G.qs[G.i]];setHud();hideAll();
   $("qn").textContent=`${G.title} · ВОПРОС ${G.i+1}${G.mode==="endless"?"":" ИЗ 7"}`;
   const qt=$("qt");qt.textContent="";qt.classList.add("typed");
@@ -596,24 +674,53 @@ function askQ(){
   let k=0;const txt=q.q;const ty=setInterval(()=>{qt.textContent=txt.slice(0,++k);if(k%2===0)tone(900+Math.random()*200,.02,"square",.02);if(k>=txt.length){clearInterval(ty);qt.classList.remove("typed")}},28);
   $("ans").value="";$("ans").disabled=false;show("bar",true);setRing(1,25);
   setTimeout(()=>$("ans").focus(),50);
-  G.locked=false;G.clockOn=false;
+  G.locked=false;G.clockOn=false;G.checking=false;G.clockPending=false;
   countT.forEach(clearTimeout);countT=[];
   [3,2,1].forEach((n,i)=>countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent=n;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");show("count",true);SFX.beep()},i*700+200)));
-  countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent="ПОЕХАЛИ!";c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");SFX.go();startClock()},2300));
+  countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent="ПОЕХАЛИ!";c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");SFX.go();if(G.checking)G.clockPending=true;else startClock()},2300));
 }
 function setRing(k,sec){const C=2*Math.PI*26;const fg=$("ringFg");fg.style.strokeDasharray=C;fg.style.strokeDashoffset=C*(1-k);$("ringT").textContent=sec;$("ring").classList.toggle("low",sec<=5)}
-function startClock(){
-  G.clockOn=true;const T=25000,t0=performance.now();let lastSec=25;
-  clearInterval(clock);clock=setInterval(()=>{const left=Math.max(0,T-(performance.now()-t0));const sec=Math.ceil(left/1000);setRing(left/T,sec);if(sec!==lastSec){lastSec=sec;if(sec<=5&&sec>0)SFX.tick()}if(left<=0){clearInterval(clock);timeUp()}},50);
+// from — сколько мс осталось (после паузы на проверку ИИ часы продолжают с того же места)
+function startClock(from=25000){
+  G.clockOn=true;G.left=from;const T=25000,t0=performance.now();let lastSec=Math.ceil(from/1000);
+  clearInterval(clock);clock=setInterval(()=>{const left=Math.max(0,from-(performance.now()-t0));G.left=left;const sec=Math.ceil(left/1000);setRing(left/T,sec);if(sec!==lastSec){lastSec=sec;if(sec<=5&&sec>0)SFX.tick()}if(left<=0){clearInterval(clock);timeUp()}},50);
 }
 function stopClock(){clearInterval(clock);countT.forEach(clearTimeout);show("count",false)}
 let errT;function err(msg){const e=$("err");e.textContent=msg;e.classList.add("on");clearTimeout(errT);errT=setTimeout(()=>e.classList.remove("on"),1600);const a=$("ans");a.classList.remove("bad");void a.offsetWidth;a.classList.add("bad");SFX.err()}
-$("bar").addEventListener("submit",e=>{e.preventDefault();if(!G||G.locked)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];const hit=findAns(q,raw)||freeAns(q,raw);if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
+$("bar").addEventListener("submit",async e=>{e.preventDefault();if(!G||G.locked||G.checking)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];
+  let hit=findAns(q,raw)||freeAns(q,raw);
+  if(!hit&&aiWorthy(q,raw)){const g=G;hit=await aiAsk(q,raw);if(G!==g||G.locked)return}
+  if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
+/* ===== проверка ИИ: ответа нет в списках → спрашиваем Cloudflare Worker (worker/), есть ли такое на самом деле ===== */
+// адрес воркера, например "https://orbita-check.<имя>.workers.dev"; пусто — проверка полностью выключена
+const AI_URL="";
+const AI_PCT={1:6,2:2,3:1,4:0,5:0};// «редкость» 1–5 от ИИ → проценты
+const aiSeen=new Map();
+function aiWorthy(q,raw){const n=norm(raw);return!!AI_URL&&n.replace(/ /g,"").length>=2&&!q.del.has(n)&&!n.split(" ").some(junkWord)}
+async function aiFetch(q,raw){
+  const key=q.id+"|"+norm(raw);if(aiSeen.has(key))return aiSeen.get(key);
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),7000);
+  try{const r=await fetch(AI_URL.replace(/\/+$/,"")+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:q.q,a:raw.slice(0,60)}),signal:ctl.signal});
+    const d=await r.json();if(r.ok&&d&&typeof d.ok==="boolean")aiSeen.set(key,d);return d}
+  catch(e){return null}finally{clearTimeout(t)}
+}
+// пока ждём ответ, часы стоят — проверка не съедает 25 секунд
+async function aiAsk(q,raw){
+  const g=G;g.checking=true;const wasOn=g.clockOn;if(wasOn)clearInterval(clock);
+  const e=$("err"),a=$("ans");clearTimeout(errT);e.textContent="ПРОВЕРЯЮ…";e.classList.add("on","chk");a.disabled=true;
+  const d=await aiFetch(q,raw);
+  g.checking=false;e.classList.remove("on","chk");if(G!==g)return null;a.disabled=false;
+  if(!G.locked){if(wasOn)startClock(G.left);else if(G.clockPending){G.clockPending=false;startClock()}setTimeout(()=>a.focus(),0)}
+  if(!d||!d.ok)return null;
+  const label=String(d.label||raw).trim().slice(0,60)||raw;
+  return{...mkFree(label),keys:[norm(raw)],pct:AI_PCT[d.rarity]??1,ai:true,src:"ai"};
+}
 function timeUp(){if(G.locked)return;commit("",null)}
 function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
   const T=tierOf(hit),pts=T.p;const from=G.score;
   G.log[G.i]={qid:G.qs[G.i],raw,hit,pts};G.score+=pts;save(false);
+  if(corrected(raw,hit))toast(`ЗАСЧИТАНО КАК «${hit.label.toUpperCase()}»`);
   const q=Qs[G.qs[G.i]];
   if(hit&&!store.get("orb-egg2")&&hit.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg2",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
   launchPart(raw,hit,T,pts,from);
@@ -647,9 +754,9 @@ function reveal(T,raw,hit,from){
   const max=top[0].pct||1;
   const r=$("res"),endless=G.mode==="endless";if(endless&&!hit)G.over=true;
   r.innerHTML=`<div class="tn rise ${T.p===100?"rainbow":""}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 20px ${T.c}88,0 3px 0 #000`}">${T.n}</div>
-   <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>
+   <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>${corrected(raw,hit)?`<div class="fix rise" style="animation-delay:.15s">засчитано как «${esc(hit.label)}»</div>`:""}
    <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+${T.p} ОЧК · ${T.p?"+"+T.p+" КМ ВВЕРХ":"НА МЕСТЕ"}</div>
-   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${hit.pct?`так ответили ~${hit.pct}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
+   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${hit.ai?"проверено ИИ — такое действительно есть":hit.pct?`так ответили ~${hit.pct}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
    <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${a===hit?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="lb">${esc(a.label)}</div></div><div class="pc">${a.pct}%</div></div>`).join("")}</div>
    <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">ЗАКОНЧИТЬ ■</button>`:""}</div>`;
   show("res",true);
@@ -667,7 +774,7 @@ function finish(already){
   G.share=`ОРБИТА · ${G.title}\n▲ ${alt} км — ${lm}\n${grid}`;
   const e=$("end");
   e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
-   <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
+   <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw)+(corrected(l.raw,l.hit)?` → ${esc(l.hit.label)}`:""):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
    <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} БЕСКОНЕЧНО</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ЕЩЁ ЗАПУСК</button>`}</div>
    <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>
    ${G.mode==="daily"&&G.day===TODAY?`<div class="next">СЛЕДУЮЩИЙ ЗАПУСК ЧЕРЕЗ <span id="nextT"></span></div>`:""}`;

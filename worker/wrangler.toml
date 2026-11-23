@@ -1,0 +1,30 @@
+# Cloudflare Worker «orbita-check» — проверка ответов игроков «Орбиты».
+# Секреты (НЕ пишите их сюда!): задаются командами
+#   npx wrangler secret put LLM_KEY
+#   npx wrangler secret put ADMIN_TOKEN
+name = "orbita-check"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Хранилище вердиктов. id выдаст команда `npx wrangler kv namespace create VERDICTS`.
+[[kv_namespaces]]
+binding = "VERDICTS"
+id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
+
+# Лимит: не больше 20 проверок в минуту с одного IP (кэшированные ответы не считаются).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+[vars]
+# Любой OpenAI-совместимый chat/completions. По умолчанию — Groq.
+LLM_URL = "https://api.groq.com/openai/v1/chat/completions"
+LLM_MODEL = "llama-3.3-70b-versatile"
+# Лимит токенов ответа. Для «думающих» моделей (Gemini, gpt-oss) поставьте "1024".
+LLM_MAX_TOKENS = "80"
+# Необязательно: доп. поля запроса в виде JSON, напр. '{"reasoning_effort":"low"}' для Gemini.
+LLM_EXTRA = ""
+# Сайты, которым разрешено обращаться к воркеру (через запятую, без пробелов и слэша в конце).
+ALLOWED_ORIGINS = "https://neatexq.github.io,http://localhost:8765,http://127.0.0.1:8765"
