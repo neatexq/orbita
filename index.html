@@ -19,7 +19,7 @@ if(location.hash.indexOf("#mig=")===0){var d=JSON.parse(decodeURIComponent(locat
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#02030a}
 body{color:var(--ink);font-family:"JetBrains Mono",monospace;-webkit-font-smoothing:antialiased}
-canvas{position:fixed;inset:0;display:block;image-rendering:pixelated}
+canvas{position:fixed;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated}
 .px{font-family:"Press Start 2P",monospace}
 .layer{position:fixed;inset:0;pointer-events:none}
 .layer>*{pointer-events:auto}
@@ -180,7 +180,7 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 #opp b{font-size:clamp(10px,1.8vw,13px);color:var(--gold);text-shadow:0 0 10px rgba(255,213,74,.5)}
 .nick{width:100%;height:46px;font:700 16px "JetBrains Mono";background:var(--panel);color:#fff;border:2px solid var(--line);padding:0 12px;outline:none;box-shadow:0 0 0 2px #000;text-transform:none}
 .nick:focus{border-color:var(--cy)}
-#mbox label{display:block;font-family:"Press Start 2P";font-size:8px;color:var(--muted);letter-spacing:2px;margin:12px 0 8px}
+#mbox label,#end label{display:block;font-family:"Press Start 2P";font-size:8px;color:var(--muted);letter-spacing:2px;margin:12px 0 8px}
 .dcode{font-family:"Press Start 2P";font-size:clamp(26px,7vw,40px);letter-spacing:8px;color:#fff;text-align:center;margin:10px 0;text-shadow:3px 0 var(--hot),-3px 0 var(--cy)}
 .dlink{font-size:11px;color:var(--cy);word-break:break-all;text-align:center;background:#0a1836;padding:8px}
 .dvs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:14px 0 4px}
@@ -193,7 +193,59 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 #end table.dt td{width:50%}
 #end table.dt tr.dq td{border-bottom:none;padding-bottom:0;color:#dcefff;font-size:11px}
 #end table.dt td .dp{float:right;font-family:"Press Start 2P";font-size:9px;margin-left:6px}
+/* комната */
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg .btn{flex:1;min-width:48px;padding:10px 6px}
+.seg .btn.on{border-color:var(--hot);color:#fff;background:rgba(255,79,139,.22);box-shadow:0 0 0 2px #000,0 0 14px rgba(255,79,139,.45)}
+.seg .btn:disabled{cursor:default}
+select.nick{appearance:none;-webkit-appearance:none;cursor:pointer;font-size:14px;background-image:linear-gradient(45deg,transparent 50%,var(--cy) 50%),linear-gradient(135deg,var(--cy) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat}
+select.nick option{background:#06102a;color:#fff}
+.rlab{display:block;font-family:"Press Start 2P";font-size:8px;color:var(--muted);letter-spacing:2px;margin:16px 0 8px}
+.plist{display:flex;flex-wrap:wrap;gap:8px}
+.plist span{font-family:"Press Start 2P";font-size:9px;padding:8px 10px;background:#0a1836;border:2px solid var(--line);box-shadow:0 0 0 2px #000;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist span.nw{animation:rise .4s cubic-bezier(.2,1.3,.4,1) both}
+.plist span.me{border-color:var(--cy);color:var(--cy)}
+.plist span.off{opacity:.4}
+.plist span .ico{margin:-3px 6px 0 0}
+.rset{font-family:"Press Start 2P";font-size:9px;color:#dcefff;line-height:1.8;text-align:center;margin-top:6px}
+.rbig{font-family:"Press Start 2P";font-size:clamp(18px,5vw,30px);text-align:center;margin:14px 0 6px;line-height:1.3}
+.rq{font-family:"Press Start 2P";font-size:clamp(10px,2.4vw,13px);color:#fff;line-height:1.6;margin-top:10px}
+.rme{text-align:center;font-size:12px;color:#dcefff}
+.rme b{font-family:"Press Start 2P";font-size:11px}
+.rrow{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:8px 2px;border-bottom:1px dashed #1f4670;font-size:12px;animation:rise .5s cubic-bezier(.2,1.3,.4,1) both}
+.rrow .nm{font-family:"Press Start 2P";font-size:8px;color:var(--muted);display:block;margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow.me .nm{color:var(--cy)}
+.rrow .an{word-break:break-word}
+.rrow .an small{color:var(--muted)}
+.rrow .pt{font-family:"Press Start 2P";font-size:10px;white-space:nowrap;text-align:right}
+.uq{display:inline-block;font-family:"Press Start 2P";font-size:7px;color:#2a0f3a;background:var(--gold);padding:3px 5px;margin-left:6px;vertical-align:1px;animation:tbglow 1.2s infinite alternate;white-space:nowrap}
+.lb{display:grid;grid-template-columns:30px 1fr auto auto;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px dashed #1f4670}
+.lb .pl{font-family:"Press Start 2P";font-size:10px;color:var(--muted)}
+.lb .pl.g1{color:var(--gold)}.lb .pl.g2{color:#cfe3f5}.lb .pl.g3{color:#ff8a2e}
+.lb .nm{font-family:"Press Start 2P";font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb.me .nm{color:var(--cy)}
+.lb .dl{font-family:"Press Start 2P";font-size:8px;color:var(--gold)}
+.lb .sc{font-family:"Press Start 2P";font-size:10px;color:var(--hot);white-space:nowrap}
+.rtimer{height:4px;background:#0b1e3a;margin-top:14px;overflow:hidden}
+.rtimer i{display:block;height:100%;background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:18px 0 6px}
+.pod{flex:1;max-width:150px;min-width:0;text-align:center}
+.pod .pn{font-family:"Press Start 2P";font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:6px}
+.pod .ps{font-size:12px;font-weight:700;color:var(--cy);margin-bottom:6px}
+.pod .pb{font-family:"Press Start 2P";font-size:22px;display:grid;place-items:center;border:2px solid;box-shadow:0 0 0 2px #000;transform-origin:bottom;animation:podUp .9s cubic-bezier(.2,1.3,.4,1) both}
+.pod.p1 .pb{height:100px;background:rgba(255,213,74,.16);border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 2px #000,0 0 22px rgba(255,213,74,.35)}
+.pod.p2 .pb{height:70px;background:rgba(220,235,255,.1);border-color:#cfe3f5;color:#cfe3f5;animation-delay:.25s}
+.pod.p3 .pb{height:48px;background:rgba(255,138,46,.13);border-color:#ff8a2e;color:#ff8a2e;animation-delay:.45s}
+.pod.me .pn{color:var(--cy)}
+@keyframes podUp{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+#end .rowBtns .btn{white-space:nowrap}
+#end details{margin-top:12px}
+#end summary{font-family:"Press Start 2P";font-size:8px;color:var(--cy);cursor:pointer;letter-spacing:1px;padding:6px 0}
 @media (max-width:600px){
+  #homeBottom .rowBtns .btn{padding:10px 6px;font-size:8px}
+  .lb{grid-template-columns:26px 1fr auto auto;gap:6px}
+  #end{padding:16px}
+  #end .rowBtns .btn{font-size:10px;padding:12px 8px}
   #hud{left:58px;right:58px}
   .hbox{min-width:0;padding:6px 8px}
   #pips i{width:9px;height:9px}
@@ -214,7 +266,7 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 <div id="hud" class="hidden">
   <div class="hbox" id="hAlt"><small>ВЫСОТА</small><b id="altV">0 км</b></div>
   <div id="pips"><div class="row" id="pipRow"></div><span id="pipTxt">ВОПРОС 1 ИЗ 7</span></div>
-  <div class="hbox" id="hScore"><small>СЧЁТ</small><b id="scoreV">0</b></div>
+  <div class="hbox" id="hScore"><small id="hScoreL">СЧЁТ</small><b id="scoreV">0</b></div>
 </div>
 
 <!-- главная -->
@@ -230,6 +282,7 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
       <button class="btn small" id="packBtn">НАБОРЫ</button>
       <button class="btn small hot" id="endlessBtn">БЕСКОНЕЧНО</button>
       <button class="btn small hot" id="duelBtn">ДУЭЛЬ</button>
+      <button class="btn small hot" id="roomBtn">КОМНАТА</button>
     </div>
     <div class="meta"><span id="dayTxt">ЗАПУСК #1</span><span id="streakTxt"></span></div>
   </div>
@@ -291,6 +344,7 @@ const ICONS={
  help:{c:{o:"#ffd54a"},m:["..oooooo..",".oo....oo.",".oo....oo.","......oo..",".....oo...","....oo....","....oo....","..........","....oo....","....oo...."]},
  share:{c:{o:"#eaf6ff",b:"#5ff3ff"},m:["....bb....","...bbbb...","..bbbbbb..","....bb....","....bb....","o...bb...o","o...bb...o","o........o","o........o","oooooooooo"]},
  duel:{c:{c:"#5ff3ff",p:"#ff4f8b",y:"#ffd54a"},m:["c........p",".c......p.","..c....p..","...c..p...","....cp....","....pc....",".y.p..c.y.","..y....y..",".y.y..y.y.","y........y"]},
+ party:{c:{c:"#5ff3ff",p:"#ff4f8b",y:"#ffd54a"},m:["....yy....","...yyyy...",".cc.yy.pp.","cccc..pppp",".cc.yy.pp.","...yyyy...","cc.yyyy.pp","cc.yyyy.pp","cc.yyyy.pp",".........."]},
  star:{c:{o:"#ff4f8b",y:"#ffd54a"},m:["....y....","....y....","...yyy...","yyyyoyyyy",".yyyoyyy.","..yyyyy..",".yyy.yyy.",".yy...yy.","y.......y"]},
 };
 function ico(name,size=16,extra=""){const I=ICONS[name];if(!I)return"";const h=I.m.length,w=Math.max(...I.m.map(r=>r.length));let r="";I.m.forEach((row,y)=>{for(let x=0;x<row.length;x++){const col=I.c[row[x]];if(col)r+=`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`}});return`<svg class="ico ${extra}" width="${size}" height="${Math.round(size*h/w)}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`}
@@ -472,7 +526,7 @@ const SFX={
   win:()=>[0,4,7,12,7,12,16,24].forEach((s,i)=>tone(392*Math.pow(2,s/12),.2,"square",.05,0,i*.11)),
 };
 function setMuteUI(){$("sndBtn").innerHTML=ico(muted?"mute":"snd",18);$("sndBtn").style.opacity=muted?.7:1}
-function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
+function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("roomBtn").innerHTML=`${ico("party",14)} КОМНАТА`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
 
 /* =================== МИР / CANVAS =================== */
 const cv=$("cv"),cx=cv.getContext("2d");let W=0,H=0,DPR=1;
@@ -631,7 +685,7 @@ const show=(id,on)=>$(id).classList.toggle("hidden",!on);
 function hideAll(){["pcard","bar","res","end","count"].forEach(i=>show(i,false));$("err").classList.remove("on")}
 
 function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function f(n){const k=clamp((n-t0)/dur,0,1);const e=1-Math.pow(1-k,3);el.textContent=Math.round(lerp(from,to,e)).toLocaleString("ru-RU")+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
-function setHud(){if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
+function setHud(){if(G.mode==="room")return roomHud();if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
 
 function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):G.mode==="duel"?"orb-du-"+G.duel.code:null}
 // в лог пишем каноническое название; p — «процент» ответа, ai — засчитан проверкой ИИ
@@ -652,7 +706,7 @@ function startGame(mode,opt={}){
   else if(mode==="duel"){qs=opt.qs;title=`ДУЭЛЬ ${opt.code}`}
   else if(mode==="pack"){qs=shuffle(Qs.filter(q=>q.cat===opt.cat).map(q=>q.id),Math.random).slice(0,7);title=CATS[opt.cat].toUpperCase()}
   else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=`БЕСКОНЕЧНЫЙ #${n}`}
-  stopPoll();show("opp",false);
+  stopPoll();roomStop();show("opp",false);
   G={mode,day,qs,i:0,score:0,log:[],title};prefetch();
   if(mode==="duel"){const s=store.get("orb-du-"+opt.code)||{};G.duel={code:opt.code,token:s.t};
     if(s.log&&s.log.length){G.log=restoreLog(s);G.i=s.log.length;G.score=s.score;if(s.done||G.i>=7){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем дуэль — второго шанса нет")}
@@ -665,7 +719,7 @@ function enterGameView(instant){
   show("home",false);show("hud",true);hideAll();
   world.pxT=pxGame();world.anchorT=.74;world.idleFlame=.25;
   if(instant){world.px=world.pxT}
-  world.tierBase=null;world.tierAT=0;
+  world.tierBase=null;world.tierAT=0;$("hScoreL").textContent="СЧЁТ";
   $("altV").textContent=(G?G.score:0)+" км";$("scoreV").textContent=G?G.score:0;
   world.alt=G?G.score:0;setHud();
 }
@@ -701,7 +755,7 @@ function startClock(from=25000){
 }
 function stopClock(){clearInterval(clock);countT.forEach(clearTimeout);show("count",false)}
 let errT;function err(msg){const e=$("err");e.textContent=msg;e.classList.add("on");clearTimeout(errT);errT=setTimeout(()=>e.classList.remove("on"),1600);const a=$("ans");a.classList.remove("bad");void a.offsetWidth;a.classList.add("bad");SFX.err()}
-$("bar").addEventListener("submit",async e=>{e.preventDefault();if(!G||G.locked||G.checking)return;const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];
+$("bar").addEventListener("submit",async e=>{e.preventDefault();if(!G||G.locked||G.checking)return;if(G.mode==="room")return roomSubmit();const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];
   let hit=findAns(q,raw)||freeAns(q,raw);
   if(!hit&&aiWorthy(q,raw)){const g=G;hit=await aiAsk(q,raw);if(G!==g||G.locked)return}
   if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
@@ -949,9 +1003,282 @@ function renderDuel(d){
   if(both){stopPoll();if(!G.duel.shown){G.duel.shown=1;if(me!=null&&G.duel.fresh!==false){if(win===me){SFX.win();confetti()}else SFX.tier(30)}}}
 }
 
+/* =================== КОМНАТА (игра на компанию) =================== */
+// Сервер ведёт игру: выдаёт вопрос всем сразу, общий дедлайн по своим часам, проверяет и считает ответы.
+// Состояние приходит целиком по SSE (/api/room/stream), токен игрока — в localStorage («orb-room»).
+let R=null;const RCLK={off:0,rtt:1e9};
+const srvNow=()=>Date.now()+RCLK.off;
+const roomLink=c=>location.origin+location.pathname+"?room="+c;
+const ROOM_NS=[5,7,10,15];
+async function roomCall(fn,args){
+  const t0=Date.now();let r,d=null;
+  try{r=await fetch(`${API}/room/${fn}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(args)})}catch(e){const x=new Error("net");x.status=0;throw x}
+  const t1=Date.now();try{d=await r.json()}catch(e){}
+  if(!r.ok){const x=new Error(d&&d.error||"http");x.status=r.status;throw x}
+  if(d&&d.state&&typeof d.state.now==="number"&&t1-t0<RCLK.rtt){RCLK.rtt=t1-t0;RCLK.off=d.state.now-(t0+t1)/2}
+  return d;
+}
+const roomSaved=()=>{const s=store.get("orb-room");return s&&s.code&&s.t&&Date.now()-(s.ts||0)<2*3600e3?s:null};
+const catName=c=>c&&CATS[c]?CATS[c].toUpperCase():"ВСЕ ТЕМЫ";
+function roomSetHTML(n,cat,on){return`<label>ВОПРОСОВ</label><div class="seg" id="rN">${ROOM_NS.map(k=>`<button class="btn small ${k===n?"on":""}" data-n="${k}" ${on?"":"disabled"}>${k}</button>`).join("")}</div>
+  <label>ТЕМА</label><select class="nick" id="rCat" ${on?"":"disabled"}><option value="">ВСЕ ТЕМЫ</option>${Object.keys(CATS).map(c=>`<option value="${c}" ${c===cat?"selected":""}>${CATS[c].toUpperCase()}</option>`).join("")}</select>`}
+function roomMenu(){
+  const sv=roomSaved();let n=7;
+  modal(`<h3>${ico("party",14)} КОМНАТА</h3><ul class="rules"><li>ИГРА ДЛЯ КОМПАНИИ — ДО 30 ЧЕЛОВЕК.</li><li>ВСЕ ОТВЕЧАЮТ НА ОДИН ВОПРОС ОДНОВРЕМЕННО.</li><li>ПОСЛЕ ВОПРОСА — ОТВЕТЫ ВСЕХ И ТАБЛИЦА. УНИКАЛЬНЫЕ ОТВЕТЫ СВЕТЯТСЯ.</li></ul>
+   ${sv?`<div class="rowBtns"><button class="btn" id="rBack">${ico("party",14)} ВЕРНУТЬСЯ В ${esc(sv.code)}</button></div>`:""}
+   ${nickField()}<div id="rSet">${roomSetHTML(n,"",true)}</div>
+   <div class="rowBtns" style="margin-top:14px"><button class="btn hot" id="rNew">${ico("party",14)} СОЗДАТЬ КОМНАТУ</button></div>
+   <label>ИЛИ ВВЕДИ КОД КОМНАТЫ</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="4" placeholder="КОД" style="flex:2;text-transform:uppercase" autocapitalize="characters"><button class="btn" id="rJoin" style="flex:1">ВОЙТИ</button></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+  const seg=$("rN");seg.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{SFX.click();n=+b.dataset.n;seg.querySelectorAll("[data-n]").forEach(x=>x.classList.toggle("on",x===b))});
+  if(sv)$("rBack").onclick=()=>{SFX.click();roomOpen(sv.code)};
+  $("rNew").onclick=async()=>{const nick=readNick();if(!nick)return;SFX.click();const token=newToken();$("rNew").disabled=true;
+    try{const d=await roomCall("create",{name:nick,token,n,cat:$("rCat").value||null});roomEnter(d.code,token,d.id,d.state,null)}
+    catch(e){toast(e.status===429||e.status===503?"СЛИШКОМ МНОГО КОМНАТ — ПОДОЖДИ":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");$("rNew").disabled=false}};
+  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{4}$/.test(c)){toast("КОД — 4 СИМВОЛА");return}if(!readNick())return;roomOpen(c,true)};
+  $("rJoin").onclick=join;$("codeIn").onkeydown=e=>{if(e.key==="Enter")join()};
+}
+const urlClear=()=>{if(/[?&]room=/.test(location.search))history.replaceState(null,"",location.pathname)};
+// по коду/ссылке: свой токен есть — сразу назад в комнату, иначе — окно входа с ником
+async function roomOpen(code,direct){
+  code=String(code).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4);
+  const sv=store.get("orb-room");let d;
+  try{d=await roomCall("state",{code,token:sv&&sv.code===code?sv.t:null})}
+  catch(e){toast(e.status===404?"КОМНАТА НЕ НАЙДЕНА":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");if(e.status===404&&sv&&sv.code===code)store.set("orb-room",null);urlClear();return}
+  if(d.id)return roomEnter(code,sv.t,d.id,d.state,d.mine);
+  const s=d.state,host=s.players.find(p=>p.id===s.host);
+  const go=async()=>{const nick=readNick();if(!nick)return;SFX.click();const token=newToken();
+    try{const j=await roomCall("join",{code,name:nick,token});if(j.error==="full"){toast("КОМНАТА ЗАПОЛНЕНА");return}roomEnter(code,token,j.id,j.state,null)}
+    catch(e){toast(e.status===404?"КОМНАТА НЕ НАЙДЕНА":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ")}};
+  if(direct&&$("nickIn")&&$("nickIn").value.trim())return go();
+  const what=s.phase==="lobby"?"собирает экипаж":s.phase==="end"?"игра окончена — ждём новую":`идёт вопрос ${s.round+1} из ${s.total} — войдёшь со следующего`;
+  modal(`<h3>${ico("party",14)} ЗОВУТ В КОМНАТУ</h3><div class="sub" style="margin-top:0">${host?`<b>${esc(host.name)}</b> `:""}${what} · в экипаже ${s.players.length}/30</div><div class="dcode">${esc(code)}</div>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="rLater">ПОТОМ</button><button class="btn hot" id="rAcc">${ico("rocket",12)} ВОЙТИ</button></div>`);
+  $("rAcc").onclick=go;$("nickIn").onkeydown=e=>{if(e.key==="Enter")go()};$("rLater").onclick=()=>{show("modal",false);urlClear()};
+}
+function roomEnter(code,t,id,st,mine){
+  show("modal",false);stopPoll();stopClock();roomStop(true);
+  store.set("orb-room",{code,t,id,ts:Date.now()});
+  history.replaceState(null,"",location.pathname+"?room="+code);
+  R={code,t,id,v:-1,st:null,key:"",es:null,mine:mine||null,tick:null,wasIn:-1,shownEnd:false,seen:new Set()};
+  G={mode:"room",qs:[],i:0,score:0,log:[],title:"КОМНАТА "+code};
+  show("home",false);hideAll();
+  roomApply(st);roomListen();
+}
+function roomListen(){
+  if(!R)return;if(R.es)R.es.close();
+  const r=R;let es;try{es=new EventSource(`${API}/room/stream?code=${r.code}&p=${encodeURIComponent(r.id)}`)}catch(e){return}
+  r.es=es;
+  es.addEventListener("st",e=>{if(R!==r)return;let s;try{s=JSON.parse(e.data)}catch(x){return}if(RCLK.rtt>=1e9)RCLK.off=s.now-Date.now();roomApply(s)});
+  // поток закрылся насовсем (комната пропала или сервер перезапущен) — уточняем состояние и переподключаемся
+  es.onerror=()=>{if(R!==r||es.readyState!==2)return;setTimeout(()=>{if(R===r)roomResync(true)},3000)};
+}
+async function roomResync(reopen){
+  const r=R;if(!r)return;
+  try{const d=await roomCall("state",{code:r.code,token:r.t});if(R!==r)return;
+    if(!d.id)return roomGone("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ");
+    if(d.mine)r.mine=d.mine;roomApply(d.state);if(reopen||!r.es||r.es.readyState===2)roomListen()}
+  catch(e){if(R!==r)return;if(e.status===404)return roomGone("КОМНАТА ЗАКРЫЛАСЬ");setTimeout(()=>{if(R===r)roomResync(true)},5000)}
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&R)roomResync(false)});
+function roomGone(msg){toast(msg);store.set("orb-room",null);roomStop();goHome()}
+function roomStop(keepUrl){
+  if(!R)return;const r=R;R=null;
+  if(r.es)r.es.close();clearInterval(r.tick);stopClock();
+  show("opp",false);$("hScoreL").textContent="СЧЁТ";
+  if(!keepUrl)urlClear();
+}
+function roomLeave(){const r=R;if(!r)return;SFX.click();roomCall("leave",{code:r.code,token:r.t}).catch(()=>{});store.set("orb-room",null);roomStop();goHome()}
+const meP=()=>R&&R.st?R.st.players.find(p=>p.id===R.id):null;
+function placeOf(s,id){const me=s.players.find(p=>p.id===id);if(!me)return 0;return 1+s.players.filter(p=>p.score>me.score).length}
+
+function roomApply(s){
+  const r=R;if(!r||!s||s.code!==r.code||s.v<r.v)return;
+  r.v=s.v;r.st=s;
+  const me=s.players.find(p=>p.id===r.id);
+  if(!me)return roomGone("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ");
+  const key=s.phase+":"+s.round;
+  // перерисовываем панель, только если на ней что-то поменялось (иначе анимации начинаются заново)
+  const sig=JSON.stringify([s.host,s.n,s.cat,s.players.map(p=>[p.id,p.name,p.score,s.phase==="lobby"?p.on:0])]);
+  if(key===r.key&&sig===r.sig&&s.phase!=="q")return;r.sig=sig;
+  if(key!==r.key){r.key=key;clearInterval(r.tick);
+    if(s.phase==="lobby")roomLobby();else if(s.phase==="q")roomQ();else if(s.phase==="reveal")roomReveal();else roomEnd();return}
+  if(s.phase==="lobby")roomLobby();
+  else if(s.phase==="q")roomHud();
+  else if(s.phase==="reveal"){if(r.panel)roomRevealPanel()}
+  else roomEndPanel();
+}
+function roomHud(){
+  const s=R.st,me=meP();if(!s||!me)return;
+  const n=s.total;$("pipRow").innerHTML=Array.from({length:n},(_,i)=>{const l=G.log[i];const T=l?TIERS[l.pts]||TIERS[0]:null;return`<i class="${i===s.round&&s.phase==="q"?"cur":""}" style="${T?`background:${T.c};border-color:${T.c};box-shadow:0 0 8px ${T.c}`:""}"></i>`}).join("");
+  $("pipTxt").textContent=s.phase==="end"?"ИТОГИ КОМНАТЫ":`ВОПРОС ${Math.max(1,s.round+1)} ИЗ ${n}`;
+  $("hScoreL").textContent="МЕСТО";$("scoreV").textContent=`${placeOf(s,R.id)}/${s.players.length}`;
+  if(s.phase==="q"){const el=s.players.filter(p=>!p.late&&(p.on||p.ans));$("oppN").textContent=`КОМНАТА ${s.code}`;$("oppV").textContent=`ОТВЕТИЛИ ${el.filter(p=>p.ans).length}/${el.length}`;show("opp",true)}
+  else show("opp",false);
+}
+function roomView(hud){
+  show("home",false);show("hud",hud);hideAll();
+  world.pxT=hud?pxGame():pxHome();world.anchorT=hud?.74:.72;world.idleFlame=hud?.25:0;world.tierAT=0;world.tierBase=null;
+  if(!world.anim){world.alt=G.score;world.cam=G.score}
+  $("altV").textContent=G.score+" км";
+}
+function roomLobby(){
+  const s=R.st,me=meP(),host=s.host===R.id;
+  G.score=0;G.log=[];R.shownEnd=false;
+  world.anim=null;world.thrust=0;
+  roomView(false);
+  const hostP=s.players.find(p=>p.id===s.host);
+  const e=$("end");e.dataset.v="lobby";const keep=e.scrollTop;
+  e.innerHTML=`<h2>${ico("party",14)} КОМНАТА · ЛОББИ</h2><div class="dcode">${esc(s.code)}</div><div class="dlink">${esc(roomLink(s.code))}</div>
+   <div class="rowBtns"><button class="btn small" id="rCopy">${ico("share",14)} ПОЗВАТЬ ДРУЗЕЙ</button></div>
+   ${host?`<div id="rSet">${roomSetHTML(s.n,s.cat,true)}</div>`:`<div class="rset" style="margin-top:14px">${s.n} ВОПРОСОВ · ${esc(catName(s.cat))}</div>`}
+   <span class="rlab">ЭКИПАЖ · ${s.players.length}/30</span>
+   <div class="plist">${s.players.map(p=>`<span class="${p.id===R.id?"me":""} ${p.on?"":"off"} ${R.seen.has(p.id)?"":"nw"}">${p.id===s.host?ico("star",10):""}${esc(p.name.toUpperCase())}${p.id===R.id?" · ТЫ":""}</span>`).join("")}</div>
+   ${host?`<div style="margin-top:18px"><button class="btn big" id="rStart">▲ СТАРТ ▲</button></div><div class="next">${s.players.length<2?"можно и одному, но вместе веселее — отправь ссылку":"новые игроки могут зайти и во время игры"}</div>`
+     :`<div class="next" style="margin-top:18px">ЖДЁМ, КОГДА ${esc((hostP?hostP.name:"ХОСТ").toUpperCase())} НАЖМЁТ СТАРТ</div>`}
+   <div class="rowBtns" style="margin-top:14px"><button class="btn small" id="rLeave">${ico("home",12)} ВЫЙТИ ИЗ КОМНАТЫ</button></div>`;
+  s.players.forEach(p=>R.seen.add(p.id));
+  e.scrollTop=keep;show("end",true);
+  $("rCopy").onclick=()=>{SFX.click();copy(`Залетай ко мне в комнату в «Орбите»! Код ${s.code}\n${roomLink(s.code)}`)};
+  $("rLeave").onclick=roomLeave;
+  if(host){
+    $("rN").querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{SFX.click();roomCall("settings",{code:R.code,token:R.t,n:+b.dataset.n}).then(d=>roomApply(d.state)).catch(()=>toast("НЕ ВЫШЛО"))});
+    $("rCat").onchange=()=>roomCall("settings",{code:R.code,token:R.t,cat:$("rCat").value||null}).then(d=>roomApply(d.state)).catch(()=>toast("НЕ ВЫШЛО"));
+    $("rStart").onclick=async()=>{ac();SFX.click();$("rStart").disabled=true;try{const d=await roomCall("start",{code:R.code,token:R.t});roomApply(d.state)}catch(x){toast("НЕ ВЫШЛО — ЕЩЁ РАЗ");if($("rStart"))$("rStart").disabled=false}};
+  }
+}
+function roomQ(){
+  const s=R.st,me=meP(),q=Qs[s.qid];
+  G.i=s.round;G.locked=false;G.checking=false;G.score=me.score;R.panel=false;R.wasIn=me.late?-1:s.round;
+  world.anim=null;world.thrust=0;roomView(true);roomHud();
+  if(!q){$("qn").textContent="";$("qt").textContent="ОБНОВИ СТРАНИЦУ — У ТЕБЯ СТАРАЯ ВЕРСИЯ ИГРЫ";show("pcard",true);return}
+  loadWD(q.id);
+  $("qn").textContent=`КОМНАТА ${s.code} · ВОПРОС ${s.round+1} ИЗ ${s.total}`;
+  const qt=$("qt");qt.textContent="";qt.classList.add("typed");
+  const card=$("pcard");card.classList.remove("out","in");void card.offsetWidth;card.classList.add("in");show("pcard",true);
+  let k=0;const txt=q.q;const ty=setInterval(()=>{if(!R||R.st!==s&&R.st.round!==s.round){clearInterval(ty);return}qt.textContent=txt.slice(0,++k);if(k%2===0)tone(900+Math.random()*200,.02,"square",.02);if(k>=txt.length){clearInterval(ty);qt.classList.remove("typed")}},28);
+  const qh=$("qh");
+  if(me.late){qh.textContent="▲ ТЫ ЗАШЁЛ ПОСРЕДИ ВОПРОСА — ОТВЕЧАЕШЬ СО СЛЕДУЮЩЕГО ▲";G.locked=true}
+  else{qh.textContent="▲ редкие ответы летят выше ▲";$("ans").value="";$("ans").disabled=false;show("bar",true);setTimeout(()=>$("ans").focus(),50)}
+  if(R.mine&&R.mine.round===s.round)roomLocked(R.mine.raw,true);
+  // обратный отсчёт и часы — по времени сервера, у всех одинаково
+  countT.forEach(clearTimeout);countT=[];
+  const pop=(txt,f)=>{const c=$("count");c.textContent=txt;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");show("count",true);f()};
+  const toStart=s.startAt-srvNow();
+  [3,2,1].forEach((n,i)=>{const at=toStart-(3-i)*700;if(at>0)countT.push(setTimeout(()=>pop(n,SFX.beep),at))});
+  if(toStart>0)countT.push(setTimeout(()=>pop("ПОЕХАЛИ!",SFX.go),toStart));
+  const T=25000;let lastSec=99;setRing(Math.min(1,(s.deadline-srvNow())/T),Math.min(25,Math.ceil((s.deadline-srvNow())/1000)));
+  clearInterval(clock);clock=setInterval(()=>{if(!R||R.st.phase!=="q"||R.st.round!==s.round){clearInterval(clock);return}
+    const left=Math.max(0,s.deadline-srvNow()),sec=Math.min(25,Math.ceil(left/1000));setRing(Math.min(1,left/T),sec);
+    if(sec!==lastSec){lastSec=sec;if(sec<=5&&sec>0&&!G.locked)SFX.tick()}
+    if(left<=0){clearInterval(clock);if(!G.locked){G.locked=true;$("ans").disabled=true;$("qh").textContent="▲ ВРЕМЯ ВЫШЛО — ЖДЁМ ИТОГИ ▲"}}},100);
+}
+function roomLocked(raw,quiet){
+  G.locked=true;const a=$("ans");a.value=raw;a.disabled=true;
+  $("qh").innerHTML=`<span style="color:var(--cy)">✓ ОТВЕТ ПРИНЯТ — ЖДЁМ ОСТАЛЬНЫХ</span>`;
+  if(!quiet)tone(660,.08,"square",.05),tone(990,.12,"square",.04,0,.06);
+}
+async function roomSubmit(){
+  const r=R,s=r&&r.st;if(!s||s.phase!=="q"||G.locked||G.checking)return;
+  const raw=$("ans").value.trim();if(!raw)return;const q=Qs[s.qid];if(!q)return;
+  if(srvNow()>s.deadline+1000)return;
+  const hit=findAns(q,raw)||freeAns(q,raw);
+  if(!hit&&!aiWorthy(q,raw)){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}
+  G.checking=true;const a=$("ans"),e=$("err");a.disabled=true;
+  if(!hit){clearTimeout(errT);e.textContent="ПРОВЕРЯЮ…";e.classList.add("on","chk")}
+  let d;try{d=await roomCall("answer",{code:r.code,token:r.t,round:s.round,raw:raw.slice(0,60),label:hit?hit.label.slice(0,60):null,src:hit?(hit.free?"free":"list"):"ai"})}
+  catch(x){d={error:x.status===429?"rate":"net"}}
+  G.checking=false;e.classList.remove("on","chk");
+  if(R!==r||r.st.phase!=="q"||r.st.round!==s.round)return;
+  if(d.accepted){r.mine={round:s.round,raw,label:d.label};roomLocked(raw);if(corrected(raw,{label:d.label}))toast(`ЗАСЧИТАНО КАК «${d.label.toUpperCase()}»`);sendAns(q,{label:d.label});return}
+  if(d.error==="closed"||d.error==="late"){G.locked=true;return}
+  a.disabled=false;setTimeout(()=>{a.focus();a.select()},0);
+  err(d.error==="net"?"НЕТ СВЯЗИ — ЖМИ ЕЩЁ РАЗ":d.error==="rate"||d.error==="busy"?"НЕ ТАК БЫСТРО":d.error==="ai"?"ПРОВЕРКА НЕ ОТВЕТИЛА — ДРУГОЙ ВАРИАНТ?":`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);
+}
+function roomReveal(){
+  const s=R.st,L=s.last,me=meP(),q=Qs[L.qid];
+  stopClock();show("opp",false);roomHud();
+  const mine=L.ans.find(a=>a.id===R.id),pts=mine?mine.pts:0,T=TIERS[pts]||TIERS[0];
+  const was=R.wasIn===s.round;
+  if(was||mine)G.log[s.round]={qid:L.qid,raw:mine?mine.raw:"",hit:mine?{label:mine.label}:null,pts};
+  if(was&&!mine&&q)sendAns(q,null);
+  const to=me.score,from=to-pts;G.score=to;R.panel=false;
+  $("pcard").classList.replace("in","out");setTimeout(()=>{if(R&&R.st.phase==="reveal"){show("pcard",false);show("bar",false)}},350);
+  $("err").classList.remove("on");
+  world.tierBase=from;world.tierAT=was||mine?1:0;world.passed=new Set();world.finalP=null;world.lineFlash={};world.alt=from;
+  let fired=false;
+  const done=()=>{if(fired||!R||R.key!=="reveal:"+s.round)return;fired=true;world.finalP=pts;
+    if(pts>0){burst(T.c,40+pts);SFX.tier(pts)}if(pts>=85){flash(.7);bodyShake("shake2")}else if(pts>=60){flash(.35);bodyShake("shake")}
+    $("scoreV").textContent=`${placeOf(R.st,R.id)}/${R.st.players.length}`;roomRevealPanel()};
+  if(!(was||mine)){done();return}
+  // в фоновой вкладке анимация стоит — панель всё равно покажем
+  setTimeout(()=>{if(!fired){world.anim=null;world.thrust=0;world.alt=to;done()}},mine?5500:2000);
+  if(!mine){SFX.fizz();world.anim={type:"fizz",t:0,done};return}
+  SFX.ignite();const dur=1.2+pts/100*2.6;setTimeout(()=>SFX.rumble(dur+.2),550);
+  world.anim={type:"launch",t:0,ign:.6,dur,from,to,tierP:pts,done};
+  animNumDelayed(from,to,600,dur*1000);
+}
+// строки ответов: сначала самые дорогие, у каждого — уровень, ник, ответ и «УНИКАЛЬНО»
+function ansRows(L,showMiss){
+  const rows=L.ans.slice().sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name)).map((a,i)=>{const T=TIERS[a.pts]||TIERS[0];const fix=a.raw&&norm(a.raw)!==norm(a.label);
+    return`<div class="rrow ${a.id===R.id?"me":""}" style="animation-delay:${.15+Math.min(i,12)*.06}s"><span>${tierBadge(T,18)}</span><div><span class="nm">${esc(a.name.toUpperCase())}${a.id===R.id?" · ТЫ":""}</span><div class="an">${esc(a.label)}${fix?` <small>(${esc(a.raw)})</small>`:""}${a.uniq?`<span class="uq">★ УНИКАЛЬНО</span>`:""}${a.ai?` <small>· проверено ИИ</small>`:""}</div></div><span class="pt" style="color:${T.c}">+${a.pts}</span></div>`});
+  if(showMiss)for(const m of L.miss||[])rows.push(`<div class="rrow ${m.id===R.id?"me":""}"><span>${tierBadge(TIERS[0],18)}</span><div><span class="nm">${esc(m.name.toUpperCase())}${m.id===R.id?" · ТЫ":""}</span><div class="an"><small>— время вышло</small></div></div><span class="pt" style="color:${TIERS[0].c}">+0</span></div>`);
+  return rows.join("")||`<div class="next">никто не успел ответить</div>`;
+}
+function board(s,delta){
+  const ps=s.players.slice().sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  return ps.map(p=>{const pl=placeOf(s,p.id),d=delta&&delta.get(p.id);return`<div class="lb ${p.id===R.id?"me":""}"><span class="pl ${pl<=3?"g"+pl:""}">#${pl}</span><span class="nm">${esc(p.name.toUpperCase())}${p.id===R.id?" · ТЫ":""}</span><span class="dl">${d?"+"+d:""}</span><span class="sc">${p.score} КМ</span></div>`}).join("");
+}
+function roomRevealPanel(){
+  const s=R.st;if(s.phase!=="reveal")return;R.panel=true;
+  const L=s.last,q=Qs[L.qid],mine=L.ans.find(a=>a.id===R.id),host=s.host===R.id,last=s.round+1>=s.total;
+  const T=mine?TIERS[mine.pts]||TIERS[0]:TIERS[0],was=R.wasIn===s.round||mine;
+  const delta=new Map(L.ans.map(a=>[a.id,a.pts]));
+  const e=$("end");e.dataset.v="reveal";const keep=e.dataset.r===String(s.round)?e.scrollTop:0;e.dataset.r=s.round;
+  e.innerHTML=`<h2>${ico("party",14)} ${esc(s.code)} · ВОПРОС ${s.round+1} ИЗ ${s.total}</h2><div class="rq">${esc(q?q.q:"")}</div>
+   ${was?`<div class="rbig ${T.p===100?"rainbow":""}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 18px ${T.c}88,0 3px 0 #000`}">${T.n}</div>
+   <div class="rme">${mine?`«${esc(mine.raw.toUpperCase())}»${norm(mine.raw)!==norm(mine.label)?` → ${esc(mine.label)}`:""} · <b style="color:${T.c}">+${T.p}</b>${mine.uniq?`<span class="uq">★ УНИКАЛЬНО</span>`:""}`:"ВРЕМЯ ВЫШЛО · <b>+0</b>"}</div>`:`<div class="rme" style="margin-top:12px">ты зашёл посреди вопроса — играешь со следующего</div>`}
+   <span class="rlab">ОТВЕТЫ ЭКИПАЖА</span>${ansRows(L,true)}
+   <span class="rlab">ТАБЛИЦА</span>${board(s,delta)}
+   <div class="rtimer"><i id="rBar"></i></div><div class="next">${last?"ИТОГИ":"СЛЕДУЮЩИЙ ВОПРОС"} ЧЕРЕЗ <span id="rLeft"></span></div>
+   ${host?`<div class="rowBtns"><button class="btn hot" id="rNext">${last?"К ИТОГАМ ▲":"ДАЛЬШЕ ▲"}</button></div>`:""}`;
+  e.scrollTop=keep;show("end",true);
+  if(host)$("rNext").onclick=()=>{SFX.click();$("rNext").disabled=true;roomCall("next",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{})};
+  const tick=()=>{if(!R||R.st!==s){clearInterval(R&&R.tick);return}const left=Math.max(0,s.nextAt-srvNow());const el=$("rLeft"),b=$("rBar");if(!el)return;el.textContent=Math.ceil(left/1000);b.style.width=(left/15000*100)+"%"};
+  clearInterval(R.tick);tick();R.tick=setInterval(tick,200);
+}
+function roomEnd(){
+  const s=R.st,me=meP();stopClock();
+  G.score=me.score;world.anim=null;world.thrust=0;roomView(true);world.idleFlame=.15;roomHud();show("opp",false);
+  roomEndPanel();
+  if(!R.shownEnd){R.shownEnd=true;const pl=placeOf(s,R.id);if(pl===1&&s.players.length>1){SFX.win();confetti()}else SFX.tier(pl<=3?60:30)}
+}
+function roomEndPanel(){
+  const s=R.st;if(s.phase!=="end")return;
+  const ps=s.players.slice().sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name)),host=s.host===R.id,pl=placeOf(s,R.id);
+  const pod=[ps[1],ps[0],ps[2]].map((p,i)=>{if(!p)return`<div class="pod"></div>`;const k=[2,1,3][i];return`<div class="pod p${k} ${p.id===R.id?"me":""}"><div class="pn">${esc(p.name.toUpperCase())}</div><div class="ps">${p.score} км</div><div class="pb">${k}</div></div>`}).join("");
+  const rr=s.rarest,rq=rr&&Qs[rr.qid];
+  const all=(s.rounds||[]).map((L,i)=>`<div class="rq" style="margin-top:14px">${i+1}. ${esc(Qs[L.qid]?Qs[L.qid].q:"?")}</div>${ansRows(L,false)}`).join("");
+  const medal=["🥇","🥈","🥉"];
+  R.share=`ОРБИТА · КОМНАТА ${s.code}\n${ps.slice(0,5).map((p,i)=>`${medal[i]||"▲"} ${p.name} — ${p.score} км`).join("\n")}${rr?`\nСамый редкий ответ: «${rr.label}» (${rr.name})`:""}\n${roomLink(s.code)}`;
+  const e=$("end");e.dataset.v="end";const keep=e.scrollTop;
+  e.innerHTML=`<h2>${ico("party",14)} КОМНАТА ${esc(s.code)} · ИТОГИ</h2><div class="podium">${pod}</div>
+   <div class="dwin ${pl===1&&ps.length>1?"rainbow":""}" style="color:var(--cy)">${ps.length<2?"ПОЛЁТ ЗАВЕРШЁН":pl===1?"ТЫ ПОБЕДИЛ(А)!":`ТЫ НА ${pl} МЕСТЕ ИЗ ${ps.length}`}</div>
+   ${rr?`<div class="dsum" style="text-align:center">▲ самый редкий ответ комнаты: «${esc(rr.label)}» — ${esc(rr.name)}${rq?` (${esc(rq.q.toLowerCase())})`:""} · +${rr.pts}</div>`:""}
+   <span class="rlab">ТАБЛИЦА</span>${board(s,null)}
+   ${all?`<details><summary>▼ ВСЕ ОТВЕТЫ ПО ВОПРОСАМ</summary>${all}</details>`:""}
+   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="rShare">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${host?`<button class="btn hot" id="rAgain">${ico("rocket",12)} ЕЩЁ РАЗ</button>`:""}</div>
+   ${host?"":`<div class="next">ХОСТ МОЖЕТ ЗАПУСТИТЬ ЕЩЁ РАЗ — ОСТАВАЙСЯ В КОМНАТЕ</div>`}
+   <div class="rowBtns"><button class="btn small" id="rLeave">${ico("home",12)} ВЫЙТИ ИЗ КОМНАТЫ</button></div>`;
+  const det=e.querySelector("details");if(det&&R.detOpen)det.open=true;if(det)det.ontoggle=()=>{if(R)R.detOpen=det.open};
+  e.scrollTop=keep;show("end",true);
+  $("rShare").onclick=()=>{SFX.click();copy(R.share)};$("rLeave").onclick=roomLeave;
+  if(host)$("rAgain").onclick=()=>{SFX.click();$("rAgain").disabled=true;roomCall("again",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{toast("НЕ ВЫШЛО");if($("rAgain"))$("rAgain").disabled=false})};
+}
+
 /* =================== ГЛАВНАЯ / МЕНЮ =================== */
 function goHome(){
-  SFX.click();stopClock();stopPoll();show("opp",false);hideAll();G=null;show("hud",false);show("home",true);
+  SFX.click();stopClock();stopPoll();roomStop();show("opp",false);hideAll();G=null;show("hud",false);show("home",true);
   world.anim=null;world.thrust=0;world.alt=0;world.tierAT=0;world.tierBase=null;world.idleFlame=0;world.pxT=pxHome();world.anchorT=.72;
   initHome();
 }
@@ -971,6 +1298,7 @@ $("howLink").onclick=()=>{SFX.click();modal(howHTML())};
 $("startBtn").onclick=()=>startGame("daily");
 $("endlessBtn").onclick=()=>startGame("endless");
 $("duelBtn").onclick=()=>{SFX.click();duelMenu()};
+$("roomBtn").onclick=()=>{SFX.click();roomMenu()};
 $("archBtn").onclick=()=>{SFX.click();archive()};
 $("packBtn").onclick=()=>{SFX.click();packs()};
 function archive(){let h="";for(let d=TODAY;d>=1;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));const dt=dateOf(d).toLocaleDateString("ru-RU",{day:"numeric",month:"short"});h+=`<button class="btn small" data-day="${d}"><span>#${d} · ${dt}${d===TODAY?" · СЕГОДНЯ":""}</span><small>${v&&v.done?v.score+" км":v?"не закончен":"не сыгран"}</small></button>`}
@@ -986,13 +1314,15 @@ $("menuBtn").onclick=()=>{SFX.click();modal(`<h3>МЕНЮ</h3><div class="mlist"
  <button class="btn small" id="mPack"><span>${ico("grid",16)} ТЕМАТИЧЕСКИЕ НАБОРЫ</span></button>
  <button class="btn small" id="mEnd"><span>${ico("inf",16)} БЕСКОНЕЧНЫЙ РЕЖИМ</span></button>
  <button class="btn small" id="mDuel"><span>${ico("duel",16)} ДУЭЛЬ С ДРУГОМ</span></button>
+ <button class="btn small" id="mRoom"><span>${ico("party",16)} КОМНАТА ДЛЯ КОМПАНИИ</span><small>до 30</small></button>
  <button class="btn small" id="mHome"><span>${ico("home",16)} НА ГЛАВНУЮ</span></button></div>`);
- $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mHome").onclick=()=>{show("modal",false);goHome()}};
+ $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mRoom").onclick=roomMenu;$("mHome").onclick=()=>{show("modal",false);goHome()}};
 $("sndBtn").onclick=()=>{muted=!muted;store.set("orb-mute",muted);setMuteUI();if(!muted){ac();SFX.click()}};
 addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&!$("res").contains(document.activeElement)){e.preventDefault();next()}});
 
 setMuteUI();initIcons();world.px=world.pxT=pxHome();initHome();
-{const dc=new URLSearchParams(location.search).get("duel");if(dc){history.replaceState(null,"",location.pathname);duelOpen(dc)}}
+{const dc=new URLSearchParams(location.search).get("duel");if(dc){history.replaceState(null,"",location.pathname);duelOpen(dc)}
+ const rc=new URLSearchParams(location.search).get("room");if(rc)roomOpen(rc)}
 addEventListener("resize",()=>{world.pxT=G?pxGame():pxHome()});
 </script>
 </body>

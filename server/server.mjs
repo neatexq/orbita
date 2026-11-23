@@ -14,6 +14,7 @@
 // POST /api/daily                 {pid,day,score,qs:[7 id]} -> {players,below,rare:[[qid,label,n],...]}
 // GET  /api/admin/answers         ?q=<id> — ответы игроков (без q — сводка по вопросам)
 // POST /api/admin/answers/del     {qid,label} — убрать мусорный ответ из статистики
+// /api/room/*                    комнаты для компании (см. раздел «комнаты»)
 // GET  /api/health
 //
 // Настройки — переменные окружения (файл /etc/orbita/env): LLM_KEY, ADMIN_TOKEN,
@@ -313,7 +314,7 @@ function data() {
     catch (e) { if (e.code !== 'ENOENT') console.error('orbita data', f, e.message); }
   }
   const W = ctx.window;
-  const qs = Array.from(W.ORB || [], (r) => ({ q: String(r[1]), lists: [r[2], r[3], r[4], (W.ORB_MORE || {})[r[1]]], ov: (W.ORB_OV || {})[r[1]], keys: null }));
+  const qs = Array.from(W.ORB || [], (r) => ({ cat: String(r[0]), q: String(r[1]), lists: [r[2], r[3], r[4], (W.ORB_MORE || {})[r[1]]], ov: (W.ORB_OV || {})[r[1]], keys: null }));
   DATA = { qs, wd: { ...(W.ORB_WD || {}) }, byText: new Map(qs.map((x, i) => [x.q, i])) };
   dataSig = sig;
   return DATA;
@@ -339,7 +340,7 @@ function realLabel(id, k) {
 const dayNow = () => Math.floor((Date.now() + 3 * 3600e3 - Date.UTC(2026, 10, 1)) / 864e5) + 1;
 const okPid = (p) => typeof p === 'string' && /^[0-9a-f]{32}$/.test(p);
 const okQid = (x) => Number.isInteger(x) && x >= 0 && x < data().qs.length;
-const MODES = new Set(['daily', 'archive', 'pack', 'endless', 'duel']);
+const MODES = new Set(['daily', 'archive', 'pack', 'endless', 'duel', 'room']);
 const ipHash = (ip) => sha('ip:' + ip).slice(0, 24);
 
 const qSeen = db.prepare('INSERT OR IGNORE INTO ans_seen(day,pid,q) VALUES(?,?,?)');
@@ -432,6 +433,397 @@ function adminAnswerDel(b) {
 function prune() { const d = dayNow() - 3; db.prepare('DELETE FROM ans_seen WHERE day<?').run(d); db.prepare('DELETE FROM ans_ip WHERE day<?').run(d); }
 prune(); setInterval(prune, 3600e3).unref();
 
+// ---------- комнаты: игра на компанию ----------
+// POST /api/room/create   {name,token,n,cat}            -> {code,id,state}
+// POST /api/room/join     {code,name,token}             -> {id,state}
+// POST /api/room/state    {code,token?}                 -> {id|null,state,mine}
+// POST /api/room/settings {code,token,n,cat}            (хост, в лобби)
+// POST /api/room/start    {code,token}                  (хост, в лобби)
+// POST /api/room/answer   {code,token,round,raw,label,src} -> {accepted,label}
+// POST /api/room/next     {code,token}                  (хост, после вопроса — сразу дальше)
+// POST /api/room/again    {code,token}                  (хост, после итогов — снова лобби с теми же игроками)
+// POST /api/room/leave    {code,token}
+// GET  /api/room/stream?code=XXXX&p=<id игрока>  SSE: событие "st" — полное состояние комнаты
+// Всё живёт в памяти процесса: комната без действий 2 часа удаляется, после перезапуска API комнат нет.
+const ROOM_TTL = 2 * 3600e3, MAX_ROOMS = 200, MAX_PLAYERS = 30, MAX_SUBS = 90;
+const Q_LEAD = 3000, Q_TIME = 25000, GRACE = 1500, REVEAL_MS = 15000, AWAY_MS = 20000, HOST_AWAY_MS = 30000;
+const ROOM_NS = [5, 7, 10, 15];
+const rooms = new Map();
+const okRoom = (c) => typeof c === 'string' && /^[A-Z0-9]{4}$/.test(c);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// очки — те же правила, что tierOf() в игре
+const PCT_OF = { 10: 15, 15: 0, 30: 6, 60: 2, 85: 1, 100: 0 };
+const AI_PCT = { 1: 6, 2: 2, 3: 1, 4: 0, 5: 0 };
+const tierPts = (a) => (!a ? 0 : a.clever ? 15 : a.pct >= 15 ? 10 : a.pct >= 6 ? 30 : a.pct >= 2 ? 60 : a.pct >= 1 ? 85 : 100);
+const blendPct = (prior, n, st) => (st.total > 0 ? ((prior / 100) * 40 + n) / (40 + st.total) * 100 : prior);
+const gstem = (s) => s.split(' ').map((w) => (w.length > 4 ? w.replace(/(ями|ами|ого|его|ой|ей|ий|ый|ая|яя|ое|ее|ые|ие|ов|ев|ок|ек|ы|и|а|я|о|е|ь|у|ю|й)$/, '') : w)).join(' ');
+const MODEL_Q = /оружи|автомат|пистолет|винтовк|танк|самол|вертол|ракет|автомобил|машин|техник|телефон|смартфон|гаджет|инструмент|летать|поезд|корабл|процессор|видеокарт/;
+const KB = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm', 'йцукенгшщзхъ', 'фывапролджэ', 'ячсмитьбю'];
+function junkWord(w) {
+  if (/([a-zа-я])\1\1/.test(w)) return true;
+  const L = w.replace(/[^a-zа-я]/g, '');
+  if (/[^aeiouyаеиоуыэюя]{5,}/.test(L)) return true;
+  for (const r of KB) { const rr = [...r].reverse().join(''); for (let i = 0; i + 5 <= L.length; i++) { const p = L.slice(i, i + 5); if (r.includes(p) || rr.includes(p)) return true; } }
+  return false;
+}
+// модель техники (буквы + номер) — как freeAns() в игре
+function freeOk(qtext, raw) {
+  if (!MODEL_Q.test(qtext.toLowerCase())) return false;
+  const n = gnorm(raw);
+  if (n.replace(/ /g, '').length < 3) return false;
+  if (!/^[a-zа-я]{1,8} ?[0-9]{1,5}[a-zа-я]{0,3}( [0-9a-zа-я]{1,10}){0,2}$/.test(n)) return false;
+  return !n.split(' ').some(junkWord);
+}
+
+// ответы вопроса с процентами — та же сборка, что в игре: списки → правки → Wikidata → правки
+const ansCache = new Map();
+function answersOf(id) {
+  const D = data(), Q = D.qs[id];
+  const c = ansCache.get(id);
+  if (c && c.D === D) { ansCache.delete(id); ansCache.set(id, c); return c; }
+  const map = new Map(), del = new Set();
+  const add = (names, pct, clever) => {
+    const keys = [...new Set(names.map(gnorm).filter(Boolean))];
+    if (!keys.length || map.has(keys[0])) return;
+    const own = keys.filter((k) => !map.has(k));
+    const a = { label: names[0].trim(), keys: own, pct, clever };
+    own.forEach((k) => map.set(k, a));
+  };
+  const [main, one, zero, more] = Q.lists.map((s) => String(s || ''));
+  for (let x of main.split(',')) { x = x.trim(); if (!x) continue; const m = x.match(/^(.*?)\s+(\d+)(!?)$/); if (m) add(m[1].split('/'), +m[2], !!m[3]); else add(x.split('/'), 1, false); }
+  for (let x of one.split(',')) { x = x.trim(); if (x) add(x.split('/'), 1, false); }
+  for (let x of (zero && more ? zero + ', ' + more : zero || more).split(',')) { x = x.trim(); if (x) add(x.split('/'), 0, false); }
+  const ov = () => {
+    const o = Q.ov || {};
+    for (const [p, ...names] of o.add || []) if (!names.some((n) => map.has(gnorm(n)))) add(names, PCT_OF[p] ?? 0, p === 15);
+    for (const [k, p] of Object.entries(o.tier || {})) { const a = map.get(gnorm(k)); if (a) { a.pct = PCT_OF[p] ?? a.pct; a.clever = p === 15; } }
+    for (let k of o.del || []) { k = gnorm(k); del.add(k); const a = map.get(k); if (a) a.keys.forEach((x) => map.delete(x)); }
+  };
+  ov();
+  if (D.wd[id]) {
+    try {
+      const d = JSON.parse(readFileSync(join(DATA_DIR, 'wd', id + '.json'), 'utf8'));
+      if (d.q === Q.q) {
+        for (const [pct, ...names] of d.a) {
+          const keys = [...new Set(names.map(gnorm).filter((k) => k.length > 1))];
+          if (!keys.length || keys.some((k) => del.has(k))) continue;
+          const ex = keys.map((k) => map.get(k)).find(Boolean);
+          if (ex) { for (const k of keys) if (!map.has(k)) { map.set(k, ex); ex.keys.push(k); } }
+          else { const a = { label: String(names[0]).trim(), keys, pct: Number(pct) || 0, clever: false }; keys.forEach((k) => map.set(k, a)); }
+        }
+        ov();
+      }
+    } catch {}
+  }
+  const v = { D, map, del };
+  ansCache.set(id, v);
+  if (ansCache.size > 24) ansCache.delete(ansCache.keys().next().value);
+  return v;
+}
+// похоже ли то, что игрок напечатал, на один из вариантов ответа (игра нашла его нечётким поиском)
+function rawFits(a, n) {
+  if (!n) return false;
+  const words = n.split(' '), sn = gstem(n), base = n.replace(/(?<=[a-zа-я]) ?[0-9]+( [0-9]+)*$/, '');
+  return a.keys.some((k) => {
+    if (k === n || k === base || words.includes(k) || gstem(k) === sn) return true;
+    const tol = (k.length >= 8 ? 2 : k.length >= 5 ? 1 : 0) + 1;
+    return Math.abs(k.length - n.length) <= tol + 1 && levenshtein(k, n) <= tol;
+  });
+}
+// проверка ответа на сервере: подпись из игры должна быть настоящим ответом и подходить к напечатанному,
+// иначе — модель техники или проверка нейросетью (как в одиночной игре)
+async function judgeRoom(qid, raw, label, ip) {
+  const Q = data().qs[qid], ix = answersOf(qid), n = gnorm(raw);
+  if (!n || ix.del.has(n)) return null;
+  const look = (s) => { const k = gnorm(s || ''); return k && !ix.del.has(k) ? ix.map.get(k) || null : null; };
+  let a = label ? look(label) : null;
+  if (a && !rawFits(a, n)) a = null;
+  if (!a) a = look(raw);
+  if (!a) { const base = n.replace(/(?<=[a-zа-я]) ?[0-9]+( [0-9]+)*$/, ''); const b = base !== n ? ix.map.get(base) : null; if (b && b.pct > 0) a = b; }
+  if (a) return { label: a.label, a, pct: a.pct, clever: a.clever, src: 'list' };
+  if (freeOk(Q.q, raw)) return { label: raw.trim().slice(0, MAX_A), pct: 0, clever: false, src: 'free' };
+  if (n.replace(/ /g, '').length < 2 || n.split(' ').some(junkWord)) return null;
+  const [st, v] = await check({ q: Q.q, a: raw.slice(0, MAX_A) }, ip);
+  if (st !== 200) return { error: st === 429 ? 'rate' : 'ai' };
+  if (!v.ok) return null;
+  return { label: String(v.label || raw).trim().slice(0, MAX_A), pct: AI_PCT[v.rarity] ?? 1, clever: false, src: 'ai' };
+}
+// что отвечают игроки (снимок в начале вопроса) — проценты смешиваются так же, как в одиночной игре
+const qAnsAll = db.prepare('SELECT k, n FROM ans WHERE q=? AND n>0');
+function statSnap(qid) {
+  const q = data().qs[qid].q, total = qTot.get(q)?.n || 0, byKey = new Map();
+  if (total) for (const r of qAnsAll.all(q)) byKey.set(r.k, r.n);
+  return { total, byKey };
+}
+function countOf(st, ix, a, label) {
+  if (!st.total) return 0;
+  if (!a) return st.byKey.get(gnorm(label)) || 0;
+  let n = 0;
+  for (const [k, v] of st.byKey) if (ix.map.get(k) === a) n += v;
+  return n;
+}
+
+const present = (p, now) => p.on > 0 || now - p.off < AWAY_MS;
+function roomPub(r) {
+  const now = Date.now(), cur = r.cur, q = r.phase === 'q';
+  const s = {
+    v: r.v, now, code: r.code, phase: r.phase, host: r.host, n: r.n, cat: r.cat, round: r.round, total: r.qs.length || r.n,
+    players: [...r.players.values()].map((p) => ({ id: p.id, name: p.name, score: p.score, on: present(p, now) ? 1 : 0,
+      ...(q ? { ans: cur.ans.has(p.id) ? 1 : 0, late: p.joined > r.shownAt ? 1 : 0 } : {}) })),
+  };
+  if (q) Object.assign(s, { qid: cur.qid, startAt: r.startAt, deadline: r.deadline });
+  if (r.phase === 'reveal') Object.assign(s, { last: roundPub(cur), nextAt: r.nextAt });
+  if (r.phase === 'end') Object.assign(s, { last: cur ? roundPub(cur) : null, rounds: r.rounds.map(roundPub), rarest: r.rarest });
+  return s;
+}
+const roundPub = (c) => ({ qid: c.qid, ans: [...c.ans].map(([id, x]) => ({ id, name: x.name, raw: x.raw, label: x.label, pts: x.pts, uniq: x.uniq ? 1 : 0, ...(x.src === 'ai' ? { ai: 1 } : {}) })), miss: c.miss || [] });
+
+function broadcast(r) {
+  r.v++;
+  r.touched = Date.now();
+  if (!r.subs.size) return;
+  const msg = `event: st\ndata: ${JSON.stringify(roomPub(r))}\n\n`;
+  for (const res of r.subs) res.write(msg);
+}
+function dropRoom(r) {
+  clearTimeout(r.timer);
+  for (const res of r.subs) { try { res.end(); } catch {} }
+  r.subs.clear();
+  rooms.delete(r.code);
+}
+function pickHost(r, now = Date.now()) {
+  const h = r.players.get(r.host);
+  if (h && (present(h, now) || now - h.off < HOST_AWAY_MS)) return false;
+  const next = [...r.players.values()].filter((p) => present(p, now)).sort((a, b) => a.joined - b.joined)[0] || (!h && [...r.players.values()][0]);
+  if (!next || next.id === r.host) return false;
+  r.host = next.id;
+  return true;
+}
+function pickQs(r) {
+  const D = data();
+  const all = D.qs.map((_, i) => i).filter((i) => !r.cat || D.qs[i].cat === r.cat);
+  const fresh = all.filter((i) => !r.used.has(i)), shuf = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let qs = shuf(fresh).slice(0, r.n);
+  if (qs.length < r.n) { r.used.clear(); qs = qs.concat(shuf(all.filter((i) => !qs.includes(i))).slice(0, r.n - qs.length)); }
+  qs.forEach((i) => r.used.add(i));
+  return qs;
+}
+function nextQuestion(r) {
+  clearTimeout(r.timer);
+  r.round++;
+  const qid = r.qs[r.round], now = Date.now();
+  answersOf(qid);
+  Object.assign(r, { phase: 'q', shownAt: now, startAt: now + Q_LEAD, deadline: now + Q_LEAD + Q_TIME, nextAt: 0 });
+  r.cur = { qid, ans: new Map(), st: statSnap(qid), miss: [] };
+  r.rounds.push(r.cur);
+  const round = r.round;
+  r.timer = setTimeout(() => closeRound(r, round), r.deadline + GRACE - now);
+  broadcast(r);
+}
+// все, кто в комнате и успел к вопросу, ответили — сразу к итогам вопроса
+function maybeAllAnswered(r) {
+  if (r.phase !== 'q') return;
+  const now = Date.now();
+  const need = [...r.players.values()].filter((p) => p.joined <= r.shownAt && present(p, now));
+  if (need.length && need.every((p) => r.cur.ans.has(p.id))) { const round = r.round; setTimeout(() => closeRound(r, round), 700); }
+}
+async function closeRound(r, round) {
+  if (r.phase !== 'q' || r.round !== round || r.closing) return;
+  r.closing = true;
+  // ответ, пришедший до конца времени, ещё проверяет нейросеть — ждём его (не дольше 7 с)
+  if (r.pending.size) await Promise.race([Promise.allSettled([...r.pending]), sleep(7000)]);
+  r.closing = false;
+  if (rooms.get(r.code) !== r || r.phase !== 'q' || r.round !== round) return;
+  clearTimeout(r.timer);
+  const cur = r.cur, cnt = new Map();
+  for (const x of cur.ans.values()) cnt.set(x.uk, (cnt.get(x.uk) || 0) + 1);
+  for (const [id, x] of cur.ans) { x.uniq = cur.ans.size >= 2 && cnt.get(x.uk) === 1; const p = r.players.get(id); if (p) p.score += x.pts; }
+  cur.miss = [...r.players.values()].filter((p) => p.joined <= r.shownAt && !cur.ans.has(p.id)).map((p) => ({ id: p.id, name: p.name }));
+  delete cur.st;
+  const now = Date.now();
+  r.phase = 'reveal';
+  r.nextAt = now + REVEAL_MS;
+  r.timer = setTimeout(() => advance(r), REVEAL_MS);
+  broadcast(r);
+}
+function advance(r) {
+  if (r.phase !== 'reveal') return;
+  const now = Date.now();
+  pickHost(r, now);
+  if (r.round + 1 >= r.qs.length || ![...r.players.values()].some((p) => present(p, now))) return endGame(r);
+  nextQuestion(r);
+}
+function endGame(r) {
+  clearTimeout(r.timer);
+  r.phase = 'end';
+  r.nextAt = 0;
+  // самый редкий ответ комнаты: больше всего очков, при равенстве — меньший процент
+  let best = null;
+  for (const c of r.rounds) for (const [id, x] of c.ans) if (x.pts > 0 && (!best || x.pts > best.pts || (x.pts === best.pts && x.pct < best.pct))) best = { id, name: x.name, qid: c.qid, label: x.label, pts: x.pts, pct: Math.round(x.pct * 10) / 10 };
+  r.rarest = best;
+  broadcast(r);
+}
+function resetScores(r) { for (const p of r.players.values()) p.score = 0; r.rounds = []; r.cur = null; r.round = -1; r.qs = []; r.rarest = null; }
+
+function roomSettings(r, b) {
+  if (b.n != null) { if (!ROOM_NS.includes(b.n)) return false; r.n = b.n; }
+  if (b.cat !== undefined) {
+    if (b.cat === null || b.cat === '') r.cat = null;
+    else if (typeof b.cat === 'string' && data().qs.some((q) => q.cat === b.cat)) r.cat = b.cat;
+    else return false;
+  }
+  return true;
+}
+function addPlayer(r, name, th) {
+  let nm = cleanName(name);
+  const taken = new Set([...r.players.values()].map((p) => p.name.toLowerCase()));
+  for (let i = 2; taken.has(nm.toLowerCase()) && i < 99; i++) nm = cleanName(name).slice(0, 13) + ' ' + i;
+  let id; do id = crypto.randomBytes(4).toString('hex'); while (r.players.has(id));
+  const now = Date.now();
+  r.players.set(id, { id, name: nm, th, score: 0, joined: now, on: 0, off: now });
+  return id;
+}
+const meOf = (r, token) => { if (!okToken(token)) return null; const th = sha(token); for (const p of r.players.values()) if (p.th === th) return p; return null; };
+
+async function roomRpc(fn, b, ip) {
+  b = b || {};
+  if (fn === 'create') {
+    if (!limit('rc:' + ip, 6)) return [429, { error: 'rate_limited' }];
+    if (!okToken(b.token)) return [400, { error: 'bad_request' }];
+    if (rooms.size >= MAX_ROOMS) return [503, { error: 'too_many_rooms' }];
+    let code; do code = Array.from(crypto.randomBytes(4), (x) => CODE_ABC[x % CODE_ABC.length]).join(''); while (rooms.has(code));
+    const now = Date.now();
+    const r = { code, v: 0, created: now, touched: now, host: null, n: 7, cat: null, phase: 'lobby', round: -1, qs: [], rounds: [], cur: null,
+      players: new Map(), subs: new Set(), used: new Set(), pending: new Set(), timer: null, rarest: null };
+    if (!roomSettings(r, { n: b.n ?? 7, cat: b.cat ?? null })) return [400, { error: 'bad_settings' }];
+    r.host = addPlayer(r, b.name, sha(b.token));
+    rooms.set(code, r);
+    r.v++;
+    return [200, { code, id: r.host, state: roomPub(r) }];
+  }
+  const code = typeof b.code === 'string' ? b.code.toUpperCase() : '';
+  if (!okRoom(code)) return [400, { error: 'bad_code' }];
+  const r = rooms.get(code);
+  if (!r) return [404, { error: 'not_found' }];
+  if (fn === 'state') {
+    if (!limit('rs:' + ip, 120)) return [429, { error: 'rate_limited' }];
+    const me = meOf(r, b.token), x = me && r.phase === 'q' ? r.cur.ans.get(me.id) : null;
+    return [200, { id: me ? me.id : null, state: roomPub(r), mine: x ? { round: r.round, raw: x.raw, label: x.label } : null }];
+  }
+  if (!okToken(b.token)) return [400, { error: 'bad_token' }];
+  if (fn === 'join') {
+    if (!limit('rj:' + ip, 30)) return [429, { error: 'rate_limited' }];
+    const me = meOf(r, b.token);
+    if (me) return [200, { id: me.id, state: roomPub(r) }];
+    if (r.players.size >= MAX_PLAYERS) return [200, { error: 'full' }];
+    const id = addPlayer(r, b.name, sha(b.token));
+    pickHost(r);
+    broadcast(r);
+    return [200, { id, state: roomPub(r) }];
+  }
+  const me = meOf(r, b.token);
+  if (!me) return [403, { error: 'not_player' }];
+  if (fn === 'answer') return roomAnswer(r, me, b, ip);
+  if (!limit('rh:' + ip, 60)) return [429, { error: 'rate_limited' }];
+  if (fn === 'leave') {
+    r.players.delete(me.id);
+    if (!r.players.size) { dropRoom(r); return [200, { ok: true }]; }
+    if (r.host === me.id) { r.host = null; pickHost(r); }
+    broadcast(r);
+    maybeAllAnswered(r);
+    return [200, { ok: true }];
+  }
+  const isHost = r.host === me.id;
+  if (!isHost) return [403, { error: 'not_host' }];
+  if (fn === 'settings') {
+    if (r.phase !== 'lobby' && r.phase !== 'end') return [409, { error: 'phase' }];
+    if (!roomSettings(r, b)) return [400, { error: 'bad_settings' }];
+    broadcast(r);
+    return [200, { state: roomPub(r) }];
+  }
+  if (fn === 'start') {
+    if (r.phase !== 'lobby' && r.phase !== 'end') return [409, { error: 'phase' }];
+    resetScores(r);
+    r.qs = pickQs(r);
+    nextQuestion(r);
+    return [200, { state: roomPub(r) }];
+  }
+  if (fn === 'next') {
+    if (r.phase === 'reveal') advance(r);
+    return [200, { state: roomPub(r) }];
+  }
+  if (fn === 'again') {
+    if (r.phase !== 'end') return [409, { error: 'phase' }];
+    resetScores(r);
+    r.phase = 'lobby';
+    broadcast(r);
+    return [200, { state: roomPub(r) }];
+  }
+  return [404, { error: 'unknown_fn' }];
+}
+
+async function roomAnswer(r, me, b, ip) {
+  const arrived = Date.now();
+  const closed = [200, { accepted: false, error: 'closed' }];
+  if (r.phase !== 'q' || b.round !== r.round || arrived > r.deadline + GRACE) return closed;
+  if (me.joined > r.shownAt) return [200, { accepted: false, error: 'late' }];
+  const had = r.cur.ans.get(me.id);
+  if (had) return [200, { accepted: true, label: had.label }];
+  if (typeof b.raw !== 'string' || (b.label != null && typeof b.label !== 'string')) return [400, { error: 'bad_request' }];
+  const raw = b.raw.trim().slice(0, MAX_A), label = b.label ? b.label.trim().slice(0, MAX_A) : null;
+  if (!raw || CONTROL_RE.test(raw) || (label && CONTROL_RE.test(label))) return [200, { accepted: false }];
+  if (!limit('ra:' + me.id, 40)) return [429, { error: 'rate_limited' }];
+  if (me.busy) return [200, { accepted: false, error: 'busy' }];
+  me.busy = true;
+  r.touched = arrived;
+  const round = r.round, cur = r.cur;
+  const p = judgeRoom(cur.qid, raw, label, ip);
+  r.pending.add(p);
+  let v;
+  try { v = await p; } finally { r.pending.delete(p); me.busy = false; }
+  if (rooms.get(r.code) !== r || r.phase !== 'q' || r.round !== round) return closed;
+  if (!v) return [200, { accepted: false }];
+  if (v.error) return [200, { accepted: false, error: v.error }];
+  if (cur.ans.has(me.id)) return [200, { accepted: true, label: cur.ans.get(me.id).label }];
+  const ix = answersOf(cur.qid);
+  const pct = blendPct(v.pct, countOf(cur.st, ix, v.a, v.label), cur.st);
+  const pts = tierPts({ pct, clever: v.clever });
+  cur.ans.set(me.id, { name: me.name, raw, label: v.label, pts, pct, src: v.src, uk: gnorm(v.label), t: arrived });
+  broadcast(r);
+  maybeAllAnswered(r);
+  return [200, { accepted: true, label: v.label }];
+}
+
+function roomStream(req, res, url, headers, ip) {
+  const code = String(url.searchParams.get('code') || '').toUpperCase();
+  const r = okRoom(code) ? rooms.get(code) : null;
+  if (!r) { res.writeHead(404, headers); return res.end('{"error":"not_found"}'); }
+  if (!limit('rst:' + ip, 30) || r.subs.size >= MAX_SUBS) { res.writeHead(429, headers); return res.end('{"error":"rate_limited"}'); }
+  const p = r.players.get(String(url.searchParams.get('p') || ''));
+  res.writeHead(200, { ...headers, 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
+  res.write('retry: 3000\n\n');
+  r.subs.add(res);
+  if (p) { p.on++; broadcast(r); } else res.write(`event: st\ndata: ${JSON.stringify(roomPub(r))}\n\n`);
+  const ping = setInterval(() => res.write(': ping\n\n'), 25000);
+  req.on('close', () => {
+    clearInterval(ping);
+    r.subs.delete(res);
+    if (p && r.players.get(p.id) === p) { p.on = Math.max(0, p.on - 1); if (!p.on) p.off = Date.now(); if (rooms.get(r.code) === r) broadcast(r); }
+  });
+}
+// уборка: старые комнаты, ушедший хост, вопрос, на который ответили все оставшиеся
+setInterval(() => {
+  const now = Date.now();
+  for (const r of rooms.values()) {
+    if (now - r.touched > ROOM_TTL) { dropRoom(r); continue; }
+    const sig = [...r.players.values()].map((p) => (present(p, now) ? 1 : 0)).join('');
+    if (pickHost(r, now) || sig !== r.sig) broadcast(r);
+    r.sig = sig;
+    maybeAllAnswered(r);
+  }
+}, 10000).unref();
+
 
 // ---------- HTTP ----------
 function readBody(req) {
@@ -473,6 +865,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (path === '/room/stream' && req.method === 'GET') return roomStream(req, res, url, headers, ip);
+
     if (path === '/stats' && req.method === 'GET') {
       if (!limit('st:' + ip, 120)) return send(429, { ok: false, error: 'rate_limited' });
       const [st, v] = stats(Number(url.searchParams.get('q') ?? 'x'));
@@ -496,6 +890,8 @@ const server = http.createServer(async (req, res) => {
     if (path === '/daily') return send(...daily(body, ip));
     const m = path.match(/^\/duel\/(orbita_duel_\w+)$/);
     if (m) return send(...duelRpc(m[1], body, ip));
+    const rm = path.match(/^\/room\/(\w+)$/);
+    if (rm) return send(...(await roomRpc(rm[1], body, ip)));
     return send(404, { ok: false, error: 'not_found' });
   } catch (e) {
     console.error('orbita error', e);
