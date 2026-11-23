@@ -163,6 +163,24 @@ body.shake canvas,body.shake #res{animation:bshake .5s}
 body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
 @keyframes bshake{10%,50%,90%{transform:translate(-4px,2px)}30%,70%{transform:translate(4px,-2px)}}
 @keyframes bshake2{10%,40%,70%{transform:translate(-10px,5px) rotate(-.5deg)}25%,55%,85%{transform:translate(10px,-5px) rotate(.5deg)}}
+/* дуэль */
+#opp{position:fixed;top:84px;right:12px;z-index:10;pointer-events:none;text-align:right}
+#opp b{font-size:clamp(10px,1.8vw,13px);color:var(--gold);text-shadow:0 0 10px rgba(255,213,74,.5)}
+.nick{width:100%;height:46px;font:700 16px "JetBrains Mono";background:var(--panel);color:#fff;border:2px solid var(--line);padding:0 12px;outline:none;box-shadow:0 0 0 2px #000;text-transform:none}
+.nick:focus{border-color:var(--cy)}
+#mbox label{display:block;font-family:"Press Start 2P";font-size:8px;color:var(--muted);letter-spacing:2px;margin:12px 0 8px}
+.dcode{font-family:"Press Start 2P";font-size:clamp(26px,7vw,40px);letter-spacing:8px;color:#fff;text-align:center;margin:10px 0;text-shadow:3px 0 var(--hot),-3px 0 var(--cy)}
+.dlink{font-size:11px;color:var(--cy);word-break:break-all;text-align:center;background:#0a1836;padding:8px}
+.dvs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:14px 0 4px}
+.dvs .hbox{min-width:0;text-align:center}
+.dvs .hbox.win{border-color:var(--gold);box-shadow:0 0 0 2px #000,0 0 18px rgba(255,213,74,.45)}
+.dvs .hbox b{font-size:clamp(14px,3.6vw,22px)}
+.dvs .hbox small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dvs>span{font-family:"Press Start 2P";font-size:12px;color:var(--hot)}
+.dwin{font-family:"Press Start 2P";font-size:clamp(16px,4.4vw,26px);text-align:center;margin-top:12px;line-height:1.4}
+#end table.dt td{width:50%}
+#end table.dt tr.dq td{border-bottom:none;padding-bottom:0;color:#dcefff;font-size:11px}
+#end table.dt td .dp{float:right;font-family:"Press Start 2P";font-size:9px;margin-left:6px}
 @media (max-width:600px){
   #hud{left:58px;right:58px}
   .hbox{min-width:0;padding:6px 8px}
@@ -199,12 +217,14 @@ body.shake2 canvas,body.shake2 #res{animation:bshake2 .9s}
       <button class="btn small" id="archBtn">АРХИВ</button>
       <button class="btn small" id="packBtn">НАБОРЫ</button>
       <button class="btn small hot" id="endlessBtn">БЕСКОНЕЧНО</button>
+      <button class="btn small hot" id="duelBtn">ДУЭЛЬ</button>
     </div>
     <div class="meta"><span id="dayTxt">ЗАПУСК #1</span><span id="streakTxt"></span></div>
   </div>
 </div>
 
 <!-- игра -->
+<div id="opp" class="hbox hidden"><small id="oppN">СОПЕРНИК</small><b id="oppV">—</b></div>
 <div id="pcard" class="hidden"><div class="qn" id="qn"></div><div class="qt" id="qt"></div><div class="qh" id="qh">▲ редкие ответы летят выше ▲</div></div>
 <div id="count" class="hidden"></div>
 <div id="err"></div>
@@ -254,6 +274,7 @@ const ICONS={
  home:{c:{o:"#5ff3ff",w:"#eaf6ff"},m:["....oo....","...oooo...","..oooooo..",".oooooooo.","oooooooooo",".w......w.",".w.ww...w.",".w.ww.www.",".w....www.",".wwwwwwww."]},
  help:{c:{o:"#ffd54a"},m:["..oooooo..",".oo....oo.",".oo....oo.","......oo..",".....oo...","....oo....","....oo....","..........","....oo....","....oo...."]},
  share:{c:{o:"#eaf6ff",b:"#5ff3ff"},m:["....bb....","...bbbb...","..bbbbbb..","....bb....","....bb....","o...bb...o","o...bb...o","o........o","o........o","oooooooooo"]},
+ duel:{c:{c:"#5ff3ff",p:"#ff4f8b",y:"#ffd54a"},m:["c........p",".c......p.","..c....p..","...c..p...","....cp....","....pc....",".y.p..c.y.","..y....y..",".y.y..y.y.","y........y"]},
  star:{c:{o:"#ff4f8b",y:"#ffd54a"},m:["....y....","....y....","...yyy...","yyyyoyyyy",".yyyoyyy.","..yyyyy..",".yyy.yyy.",".yy...yy.","y.......y"]},
 };
 function ico(name,size=16,extra=""){const I=ICONS[name];if(!I)return"";const h=I.m.length,w=Math.max(...I.m.map(r=>r.length));let r="";I.m.forEach((row,y)=>{for(let x=0;x<row.length;x++){const col=I.c[row[x]];if(col)r+=`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`}});return`<svg class="ico ${extra}" width="${size}" height="${Math.round(size*h/w)}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`}
@@ -367,7 +388,7 @@ const SFX={
   win:()=>[0,4,7,12,7,12,16,24].forEach((s,i)=>tone(392*Math.pow(2,s/12),.2,"square",.05,0,i*.11)),
 };
 function setMuteUI(){$("sndBtn").innerHTML=ico(muted?"mute":"snd",18);$("sndBtn").style.opacity=muted?.7:1}
-function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
+function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
 
 /* =================== МИР / CANVAS =================== */
 const cv=$("cv"),cx=cv.getContext("2d");let W=0,H=0,DPR=1;
@@ -528,17 +549,22 @@ function hideAll(){["pcard","bar","res","end","count"].forEach(i=>show(i,false))
 function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function f(n){const k=clamp((n-t0)/dur,0,1);const e=1-Math.pow(1-k,3);el.textContent=Math.round(lerp(from,to,e)).toLocaleString("ru-RU")+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
 function setHud(){if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
 
-function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):null}
-function save(done){const k=storeKey();if(!k)return;store.set(k,{i:G.i,score:G.score,log:G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts})),done})}
+function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):G.mode==="duel"?"orb-du-"+G.duel.code:null}
+function save(done){const k=storeKey();if(!k)return;const log=G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts}));store.set(k,{...(store.get(k)||{}),i:G.i,score:G.score,log,done});if(G.mode==="duel")duelPush(G.duel.code,G.duel.token,log.length,G.score,log,done)}
 function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];const hit=l.label?(!l.free&&q.a.find(a=>a.label===l.label))||mkFree(l.label):null;return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
 
 function startGame(mode,opt={}){
   ac();SFX.click();
   let qs,title,day=null;
   if(mode==="daily"){day=opt.day||TODAY;qs=dailySet(day);title=`ЗАПУСК #${day}`}
+  else if(mode==="duel"){qs=opt.qs;title=`ДУЭЛЬ ${opt.code}`}
   else if(mode==="pack"){qs=shuffle(Qs.filter(q=>q.cat===opt.cat).map(q=>q.id),Math.random).slice(0,7);title=CATS[opt.cat].toUpperCase()}
   else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=`БЕСКОНЕЧНЫЙ #${n}`}
+  stopPoll();show("opp",false);
   G={mode,day,qs,i:0,score:0,log:[],title};
+  if(mode==="duel"){const s=store.get("orb-du-"+opt.code)||{};G.duel={code:opt.code,token:s.t};
+    if(s.log&&s.log.length){G.log=restoreLog(s);G.i=s.log.length;G.score=s.score;if(s.done||G.i>=7){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем дуэль — второго шанса нет")}
+    startPoll();}
   if(mode==="daily"){const s=store.get("orb-d-"+dKey(dateOf(day)));if(s){G.log=restoreLog(s);G.i=s.i;G.score=s.score;if(s.done){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем запуск — второго шанса нет")}}
   enterGameView(false);
   setTimeout(askQ,700);
@@ -625,6 +651,7 @@ function reveal(T,raw,hit,from){
 }
 function next(){if(!G||$("res").classList.contains("hidden"))return;SFX.click();show("res",false);world.tierAT=0;world.anchorT=.74;G.i++;if(G.mode==="endless"){if(G.over)finish(false);else askQ();return}save(G.i>=7);if(G.i<7)askQ();else finish(false)}
 function finish(already){
+  if(G.mode==="duel")return duelEnd(already);
   hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent="ЗАПУСК ЗАВЕРШЁН";
   if(G.mode==="daily"&&!already){save(true);updateStreak()}
   const alt=G.score;let lm="на стартовой площадке";for(const[a,t]of LANDMARKS)if(alt>=a)lm=t;
@@ -649,9 +676,100 @@ function confetti(){const cols=["#ff4fd8","#ffd54a","#5ef38c","#5ff3ff","#c77dff
 function updateStreak(){let s=0;for(let d=TODAY;d>0;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));if(v&&v.done)s++;else break}store.set("orb-streak",s)}
 G&&(G.cat=null);
 
+/* =================== ДУЭЛЬ =================== */
+const SB="https://ickgkugtruclnjhznutz.supabase.co",SBK="sb_publishable_TovzEnNbwAV7JPtG05syfg_PbF_KI41";
+async function rpc(fn,args){const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:"POST",headers:{apikey:SBK,"Content-Type":"application/json"},body:JSON.stringify(args)});if(!r.ok)throw new Error(await r.text());return r.json()}
+const newToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
+const duelLink=c=>location.origin+location.pathname+"?duel="+c;
+const nickOf=()=>(store.get("orb-nick")||"").slice(0,16);
+let duelQ=Promise.resolve(),pollT=null;
+function duelPush(code,token,step,score,log,done){if(!token)return;duelQ=duelQ.then(()=>rpc("orbita_duel_save",{p_code:code,p_token:token,p_step:step,p_score:score,p_log:log,p_done:!!done})).catch(()=>{})}
+function duelGet(code){const s=store.get("orb-du-"+code)||{};return rpc("orbita_duel_get",{p_code:code,p_token:s.t||null})}
+function rememberDuel(code,token){const s=store.get("orb-du-"+code)||{};s.t=token;store.set("orb-du-"+code,s);const l=(store.get("orb-duels")||[]).filter(c=>c!==code);l.unshift(code);store.set("orb-duels",l.slice(0,10))}
+function stopPoll(){clearInterval(pollT);pollT=null}
+function startPoll(){stopPoll();const tick=()=>{if(!G||G.mode!=="duel")return stopPoll();duelGet(G.duel.code).then(d=>{if(!d||!G||G.mode!=="duel")return;G.duel.d=d;if(G.duel.view)renderDuel(d);else oppHud(d)}).catch(()=>{})};tick();pollT=setInterval(tick,4000)}
+function oppHud(d){const o=d.players.find(p=>p.slot!==d.me);show("opp",true);
+  if(!o){$("oppN").textContent="СОПЕРНИК";$("oppV").textContent="ЕЩЁ НЕ ЗАШЁЛ";return}
+  $("oppN").textContent=o.name.toUpperCase();$("oppV").textContent=`${o.score} КМ · ${o.done?"ФИНИШ":o.step+"/7"}`}
+function nickField(){return`<label>ТВОЙ НИК</label><input class="nick" id="nickIn" maxlength="16" placeholder="например, Гагарин" value="${esc(nickOf())}">`}
+function readNick(){const v=$("nickIn").value.trim().slice(0,16);if(!v){$("nickIn").focus();toast("ВВЕДИ НИК");return null}store.set("orb-nick",v);return v}
+function duelMenu(){
+  const mine=(store.get("orb-duels")||[]).map(c=>{const s=store.get("orb-du-"+c)||{};return`<button class="btn small" data-code="${esc(c)}"><span>${ico("duel",14)} ${esc(c)}</span><small>${s.done?s.score+" км":s.log&&s.log.length?"не закончена":"не сыграна"}</small></button>`}).join("");
+  modal(`<h3>${ico("duel",14)} ДУЭЛЬ</h3><ul class="rules"><li>ОДИНАКОВЫЕ 7 ВОПРОСОВ ДЛЯ ДВОИХ.</li><li>ИГРАЙТЕ ВМЕСТЕ ИЛИ ПО ОЧЕРЕДИ — ССЫЛКА ПОКАЖЕТ ИТОГ.</li><li>КТО УЛЕТЕЛ ВЫШЕ — ТОТ ПОБЕДИЛ.</li></ul>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn hot" id="dNew">${ico("duel",14)} СОЗДАТЬ ДУЭЛЬ</button></div>
+   <label>ИЛИ ВВЕДИ КОД ДРУГА</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="5" placeholder="КОД" style="flex:2;text-transform:uppercase"><button class="btn" id="dJoin" style="flex:1">ВОЙТИ</button></div>
+   ${mine?`<label>МОИ ДУЭЛИ</label><div class="mlist">${mine}</div>`:""}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+  $("dNew").onclick=duelCreate;
+  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{5}$/.test(c)){toast("КОД — 5 СИМВОЛОВ");return}if(!readNick())return;duelOpen(c)};
+  $("dJoin").onclick=join;$("codeIn").onkeydown=e=>{if(e.key==="Enter")join()};
+  $("mbox").querySelectorAll("[data-code]").forEach(b=>b.onclick=()=>duelOpen(b.dataset.code));
+}
+async function duelCreate(){
+  const nick=readNick();if(!nick)return;SFX.click();
+  const qs=shuffle(Qs.map(q=>q.id),Math.random).slice(0,7),token=newToken();
+  $("dNew").disabled=true;
+  try{const code=await rpc("orbita_duel_create",{p_qs:qs,p_name:nick,p_token:token});rememberDuel(code,token);duelShare(code,qs)}
+  catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");$("dNew").disabled=false}
+}
+function copy(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("СКОПИРОВАНО!"),()=>toast("НЕ УДАЛОСЬ СКОПИРОВАТЬ"))}
+function duelShare(code,qs){
+  modal(`<h3>${ico("duel",14)} ДУЭЛЬ СОЗДАНА</h3><div class="sub" style="margin-top:0">отправь другу код или ссылку</div><div class="dcode">${esc(code)}</div><div class="dlink">${esc(duelLink(code))}</div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn" id="dCopy">${ico("share",14)} КОПИРОВАТЬ</button><button class="btn hot" id="dPlay">${ico("rocket",12)} ИГРАТЬ</button></div>`);
+  $("dCopy").onclick=()=>{SFX.click();copy(`Дуэль в «Орбите»! Кто улетит выше? Код ${code}\n${duelLink(code)}`)};
+  $("dPlay").onclick=()=>{show("modal",false);startGame("duel",{code,qs})};
+}
+async function duelOpen(code){
+  code=String(code).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5);
+  let d;try{d=await duelGet(code)}catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");return}
+  if(!d){toast("ДУЭЛЬ НЕ НАЙДЕНА");return}
+  if(d.me!=null){show("modal",false);return startGame("duel",{code,qs:d.qs})}
+  if(d.players.length>=2){show("modal",false);return duelSpectate(d)}
+  const host=d.players[0];
+  const go=async()=>{const nick=readNick();if(!nick)return;const token=newToken();
+    try{const slot=await rpc("orbita_duel_join",{p_code:code,p_name:nick,p_token:token});if(slot<0){toast("В ДУЭЛИ УЖЕ ДВОЕ");return duelOpen(code)}rememberDuel(code,token);show("modal",false);startGame("duel",{code,qs:d.qs})}
+    catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ")}};
+  modal(`<h3>${ico("duel",14)} ВЫЗОВ НА ДУЭЛЬ</h3><div class="sub" style="margin-top:0"><b>${esc(host.name)}</b> вызывает тебя${host.done?` — уже улетел(а) на <b>${host.score} км</b>`:""}</div><div class="dcode">${esc(code)}</div>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ПОТОМ</button><button class="btn hot" id="dAcc">${ico("rocket",12)} ПРИНЯТЬ</button></div>`);
+  $("dAcc").onclick=go;$("nickIn").onkeydown=e=>{if(e.key==="Enter")go()};
+}
+function duelSpectate(d){
+  stopPoll();G={mode:"duel",qs:d.qs,i:7,score:0,log:[],title:"ДУЭЛЬ "+d.code,duel:{code:d.code,d,view:true}};
+  enterGameView(true);show("opp",false);$("pipTxt").textContent="ДУЭЛЬ";renderDuel(d);startPoll();
+}
+function duelEnd(already){
+  hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent="ЗАПУСК ЗАВЕРШЁН";show("opp",false);
+  G.duel.view=true;G.duel.fresh=!already;
+  const s=store.get("orb-du-"+G.duel.code)||{};if(s.t&&s.log)duelPush(G.duel.code,s.t,s.log.length,s.score,s.log,true);
+  const e=$("end");e.innerHTML=`<h2>${ico("duel",14)} ${esc(G.title)}</h2><div class="dwin">СВЯЗЬ С ЦУПОМ…</div>`;show("end",true);
+  duelQ.then(()=>{if(G&&G.mode==="duel")startPoll()});
+}
+function renderDuel(d){
+  const P=[0,1].map(sl=>d.players.find(p=>p.slot===sl));const me=d.me;
+  const both=!!(P[0]&&P[1]&&P[0].done&&P[1].done);
+  const win=both?(P[0].score===P[1].score?-1:P[0].score>P[1].score?0:1):null;
+  let head;
+  if(!both){const o=me!=null?P[1-me]:null;head=me==null?`<div class="dwin" style="color:var(--cy)">ДУЭЛЬ ЕЩЁ ИДЁТ</div>`:`<div class="dwin" style="color:var(--cy)">${!o?"ЖДЁМ СОПЕРНИКА":`${esc(o.name.toUpperCase())} ЕЩЁ ЛЕТИТ · ${o.step}/7`}</div><div class="next">${!o?"отправь другу ссылку — результат появится здесь":"результат обновится сам"}</div>`}
+  else if(win===-1)head=`<div class="dwin" style="color:var(--gold)">НИЧЬЯ!</div>`;
+  else if(me==null)head=`<div class="dwin rainbow">ПОБЕДИЛ(А) ${esc(P[win].name.toUpperCase())}</div>`;
+  else head=win===me?`<div class="dwin rainbow">ПОБЕДА!</div>`:`<div class="dwin" style="color:var(--hot)">ПОРАЖЕНИЕ</div>`;
+  const box=(p,sl)=>`<div class="hbox ${win===sl?"win":""}"><small>${p?esc(p.name.toUpperCase())+(sl===me?" · ТЫ":""):"???"}</small><b>${p?p.score+" КМ":"—"}</b></div>`;
+  const cell=(p,i)=>{if(!p)return`<td><small>—</small></td>`;const l=p.log[i];if(!l)return`<td><small>${p.step>i?"скрыто до финиша":"…"}</small></td>`;const T=TIERS[l.pts]||TIERS[0];return`<td>${tierBadge(T,14)} <small>${l.raw?esc(l.raw):"— время вышло"}</small><span class="dp" style="color:${T.c}">+${l.pts}</span></td>`};
+  const rows=d.qs.map((qid,i)=>`<tr class="dq"><td colspan="2">${i+1}. ${esc(Qs[qid]?Qs[qid].q:"?")}</td></tr><tr>${cell(P[0],i)}${cell(P[1],i)}</tr>`).join("");
+  const e=$("end");const keep=e.scrollTop;
+  e.innerHTML=`<h2>${ico("duel",14)} ДУЭЛЬ ${esc(d.code)}</h2><div class="dvs">${box(P[0],0)}<span>VS</span>${box(P[1],1)}</div>${head}
+   <table class="dt">${rows}</table>
+   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="dLink">${ico("share",14)} ССЫЛКА</button><button class="btn hot" id="dAgain">${ico("duel",14)} НОВАЯ ДУЭЛЬ</button></div>
+   <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>`;
+  e.scrollTop=keep;show("end",true);
+  $("dLink").onclick=()=>{SFX.click();copy(both?`Дуэль в «Орбите»: ${P[0].name} ${P[0].score} км vs ${P[1].name} ${P[1].score} км\n${duelLink(d.code)}`:`Дуэль в «Орбите»! Кто улетит выше? Код ${d.code}\n${duelLink(d.code)}`)};
+  $("dAgain").onclick=()=>{SFX.click();duelMenu()};$("homeBtn").onclick=goHome;
+  if(both){stopPoll();if(!G.duel.shown){G.duel.shown=1;if(me!=null&&G.duel.fresh!==false){if(win===me){SFX.win();confetti()}else SFX.tier(30)}}}
+}
+
 /* =================== ГЛАВНАЯ / МЕНЮ =================== */
 function goHome(){
-  SFX.click();stopClock();hideAll();G=null;show("hud",false);show("home",true);
+  SFX.click();stopClock();stopPoll();show("opp",false);hideAll();G=null;show("hud",false);show("home",true);
   world.anim=null;world.thrust=0;world.alt=0;world.tierAT=0;world.tierBase=null;world.idleFlame=0;world.pxT=pxHome();world.anchorT=.72;
   initHome();
 }
@@ -670,6 +788,7 @@ function howHTML(){return`<h3>КАК ИГРАТЬ</h3><ul class="rules"><li>7 В
 $("howLink").onclick=()=>{SFX.click();modal(howHTML())};
 $("startBtn").onclick=()=>startGame("daily");
 $("endlessBtn").onclick=()=>startGame("endless");
+$("duelBtn").onclick=()=>{SFX.click();duelMenu()};
 $("archBtn").onclick=()=>{SFX.click();archive()};
 $("packBtn").onclick=()=>{SFX.click();packs()};
 function archive(){let h="";for(let d=TODAY;d>=1;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));const dt=dateOf(d).toLocaleDateString("ru-RU",{day:"numeric",month:"short"});h+=`<button class="btn small" data-day="${d}"><span>#${d} · ${dt}${d===TODAY?" · СЕГОДНЯ":""}</span><small>${v&&v.done?v.score+" км":v?"не закончен":"не сыгран"}</small></button>`}
@@ -684,12 +803,14 @@ $("menuBtn").onclick=()=>{SFX.click();modal(`<h3>МЕНЮ</h3><div class="mlist"
  <button class="btn small" id="mArch"><span>${ico("clock",16)} АРХИВ</span></button>
  <button class="btn small" id="mPack"><span>${ico("grid",16)} ТЕМАТИЧЕСКИЕ НАБОРЫ</span></button>
  <button class="btn small" id="mEnd"><span>${ico("inf",16)} БЕСКОНЕЧНЫЙ РЕЖИМ</span></button>
+ <button class="btn small" id="mDuel"><span>${ico("duel",16)} ДУЭЛЬ С ДРУГОМ</span></button>
  <button class="btn small" id="mHome"><span>${ico("home",16)} НА ГЛАВНУЮ</span></button></div>`);
- $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mHome").onclick=()=>{show("modal",false);goHome()}};
+ $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mHome").onclick=()=>{show("modal",false);goHome()}};
 $("sndBtn").onclick=()=>{muted=!muted;store.set("orb-mute",muted);setMuteUI();if(!muted){ac();SFX.click()}};
 addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&!$("res").contains(document.activeElement)){e.preventDefault();next()}});
 
 setMuteUI();initIcons();world.px=world.pxT=pxHome();initHome();
+{const dc=new URLSearchParams(location.search).get("duel");if(dc){history.replaceState(null,"",location.pathname);duelOpen(dc)}}
 addEventListener("resize",()=>{world.pxT=G?pxGame():pxHome()});
 </script>
 </body>
