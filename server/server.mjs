@@ -942,7 +942,7 @@ async function lbItem(day, qid, it, ip) {
   return { qid, raw, label: v.label, pts, claim };
 }
 
-let lbV = Date.now();
+let lbV = Date.now(), lbVt = Date.now();
 const lbCache = new Map();
 const lbBusy = new Set();
 const qLbMine = db.prepare('SELECT * FROM lb WHERE day=? AND pid=?');
@@ -978,7 +978,7 @@ async function lbSubmit(b, ip) {
     const pts = items.map((x) => x.pts), score = pts.reduce((a, x) => a + x, 0), claimed = items.reduce((a, x) => a + x.claim, 0);
     const log = items.map((x) => ({ qid: x.qid, raw: x.raw, label: x.label, pts: x.pts, ...(x.claim !== x.pts ? { claim: x.claim } : {}) }));
     qLbIns.run(b.day, b.pid, name, score, JSON.stringify(pts), JSON.stringify(log), claimed, Date.now(), ih);
-    lbV++; lbCache.clear();
+    lbV++; lbVt = Date.now(); lbCache.clear();
     const row = qLbMine.get(b.day, b.pid);
     return [200, { ok: true, score: row.score, pts: JSON.parse(row.pts), adjusted: row.score !== claimed, name: row.name, ...placeIn(b.day, row) }];
   } finally { lbBusy.delete(b.pid); }
@@ -987,11 +987,13 @@ async function lbSubmit(b, ip) {
 function lbList(b, ip) {
   if (!b || (b.kind !== 'day' && b.kind !== 'week') || !Number.isInteger(b.day) || b.day < 1 || b.day > dayNow() + 1) return [400, { ok: false, error: 'bad_request' }];
   if (!limit('lbg:' + ip, 90)) return [429, { ok: false, error: 'rate_limited' }];
-  if (b.v === lbV) return [200, { same: 1, v: lbV }];
+  if (b.v === lbV && Date.now() - lbVt < 30000) return [200, { same: 1, v: lbV }];
   const lim = Math.min(Math.max(Number.isInteger(b.lim) ? b.lim : 10, 1), LB_LIM);
   const pid = okPid(b.pid) ? b.pid : null;
   const key = b.kind + ':' + b.day;
   let c = lbCache.get(key);
+  // кэш живёт до любой правки рейтинга, но не дольше 30 с (на случай правок базы руками)
+  if (c && Date.now() - c.t > 30000) c = null;
   if (!c) {
     if (b.kind === 'day') c = { rows: qLbTop.all(b.day, LB_LIM), n: Number(qLbCount.get(b.day).n) };
     else {
@@ -999,6 +1001,7 @@ function lbList(b, ip) {
       for (const r of qLbWeek.all(b.day - 6, b.day)) if (!seen.has(r.pid)) { seen.add(r.pid); rows.push(r); }
       c = { rows, n: rows.length };
     }
+    c.t = Date.now();
     if (lbCache.size > 20) lbCache.clear();
     lbCache.set(key, c);
   }
@@ -1030,7 +1033,7 @@ function adminLbSet(b) {
   const k = banKey(r.name);
   if (b.ban === true && k) db.prepare('INSERT OR IGNORE INTO lb_ban(k,t) VALUES(?,?)').run(k, Date.now());
   if (b.ban === false && k) db.prepare('DELETE FROM lb_ban WHERE k=?').run(k);
-  lbV++; lbCache.clear();
+  lbV++; lbVt = Date.now(); lbCache.clear();
   const x = db.prepare('SELECT id,hidden,noname FROM lb WHERE id=?').get(b.id);
   return [200, { ok: true, id: x.id, hidden: !!x.hidden, noname: !!x.noname, banned: !!(k && qBanGet.get(k)) }];
 }
