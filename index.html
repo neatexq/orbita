@@ -2,6 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<script>
+// сайт переехал на свой сервер: со старого адреса переносим игрока вместе с сохранениями
+(function(){var S="https://orbita.129-151-216-221.sslip.io/";try{
+if(/\.github\.io$/.test(location.hostname)){var m={},n=0;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^orb/.test(k)){m[k]=localStorage.getItem(k);n++}}
+var h=n?encodeURIComponent(JSON.stringify(m)):"";location.replace(S+location.search+(h&&h.length<400000?"#mig="+h:""));return}
+if(location.hash.indexOf("#mig=")===0){var d=JSON.parse(decodeURIComponent(location.hash.slice(5)));for(var k2 in d)if(/^orb/.test(k2)&&localStorage.getItem(k2)==null)localStorage.setItem(k2,String(d[k2]));history.replaceState(null,"",location.pathname+location.search)}
+}catch(e){if(/\.github\.io$/.test(location.hostname))location.replace(S+location.search)}})();
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Орбита · ежедневный запуск</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -693,7 +701,9 @@ $("bar").addEventListener("submit",async e=>{e.preventDefault();if(!G||G.locked|
   if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
 /* ===== проверка ИИ: ответа нет в списках → спрашиваем Cloudflare Worker (worker/), есть ли такое на самом деле ===== */
 // адрес воркера, например "https://orbita-check.<имя>.workers.dev"; пусто — проверка полностью выключена
-const AI_URL="";
+// свой сервер (Oracle): проверка ответов нейросетью и дуэли
+const API=(/sslip\.io$/.test(location.hostname)?location.origin:"https://orbita.129-151-216-221.sslip.io")+"/api";
+const AI_URL=API;
 const AI_PCT={1:6,2:2,3:1,4:0,5:0};// «редкость» 1–5 от ИИ → проценты
 const aiSeen=new Map();
 function aiWorthy(q,raw){const n=norm(raw);return!!AI_URL&&n.replace(/ /g,"").length>=2&&!q.del.has(n)&&!n.split(" ").some(junkWord)}
@@ -792,8 +802,7 @@ function updateStreak(){let s=0;for(let d=TODAY;d>0;d--){const v=store.get("orb-
 G&&(G.cat=null);
 
 /* =================== ДУЭЛЬ =================== */
-const SB="https://ickgkugtruclnjhznutz.supabase.co",SBK="sb_publishable_TovzEnNbwAV7JPtG05syfg_PbF_KI41";
-async function rpc(fn,args){const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:"POST",headers:{apikey:SBK,"Content-Type":"application/json"},body:JSON.stringify(args)});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function rpc(fn,args){const r=await fetch(`${API}/duel/${fn}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(args)});if(!r.ok)throw new Error(await r.text());return r.json()}
 const newToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
 const duelLink=c=>location.origin+location.pathname+"?duel="+c;
 const nickOf=()=>(store.get("orb-nick")||"").slice(0,16);
@@ -801,8 +810,9 @@ let duelQ=Promise.resolve(),pollT=null;
 function duelPush(code,token,step,score,log,done){if(!token)return;duelQ=duelQ.then(()=>rpc("orbita_duel_save",{p_code:code,p_token:token,p_step:step,p_score:score,p_log:log,p_done:!!done})).catch(()=>{})}
 function duelGet(code){const s=store.get("orb-du-"+code)||{};return rpc("orbita_duel_get",{p_code:code,p_token:s.t||null})}
 function rememberDuel(code,token){const s=store.get("orb-du-"+code)||{};s.t=token;store.set("orb-du-"+code,s);const l=(store.get("orb-duels")||[]).filter(c=>c!==code);l.unshift(code);store.set("orb-duels",l.slice(0,10))}
-function stopPoll(){clearInterval(pollT);pollT=null}
-function startPoll(){stopPoll();const tick=()=>{if(!G||G.mode!=="duel")return stopPoll();duelGet(G.duel.code).then(d=>{if(!d||!G||G.mode!=="duel")return;G.duel.d=d;if(G.duel.view)renderDuel(d);else oppHud(d)}).catch(()=>{})};tick();pollT=setInterval(tick,4000)}
+let duelES=null;
+function stopPoll(){clearInterval(pollT);pollT=null;if(duelES){duelES.close();duelES=null}}
+function startPoll(){stopPoll();const tick=()=>{if(!G||G.mode!=="duel")return stopPoll();duelGet(G.duel.code).then(d=>{if(!d||!G||G.mode!=="duel")return;G.duel.d=d;if(G.duel.view)renderDuel(d);else oppHud(d)}).catch(()=>{})};tick();pollT=setInterval(tick,15000);try{duelES=new EventSource(`${API}/duel/stream?code=${encodeURIComponent(G.duel.code)}`);duelES.addEventListener("ch",tick)}catch(e){}}
 function oppHud(d){const o=d.players.find(p=>p.slot!==d.me);show("opp",true);
   if(!o){$("oppN").textContent="СОПЕРНИК";$("oppV").textContent="ЕЩЁ НЕ ЗАШЁЛ";return}
   $("oppN").textContent=o.name.toUpperCase();$("oppV").textContent=`${o.score} КМ · ${o.done?"ФИНИШ":o.step+"/7"}`}

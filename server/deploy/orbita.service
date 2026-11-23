@@ -1,0 +1,22 @@
+[Unit]
+Description=Orbita game API (answer check + duels)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=orbita
+Group=orbita
+EnvironmentFile=/etc/orbita/env
+Environment=PORT=8790 DB=/var/lib/orbita/orbita.db NODE_NO_WARNINGS=1
+ExecStart=/usr/bin/node /opt/orbita/server/server.mjs
+Restart=always
+RestartSec=2
+MemoryMax=160M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/orbita
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

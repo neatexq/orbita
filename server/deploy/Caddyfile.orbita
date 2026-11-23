@@ -1,0 +1,18 @@
+# «Орбита»
+orbita.129-151-216-221.sslip.io {
+	encode zstd gzip
+	@hidden path /server/* /worker/* /.git/* /.git /.claude/* /tools/*.mjs /.gitignore
+	handle @hidden {
+		respond 404
+	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8790 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /opt/orbita
+		header Cache-Control "no-cache"
+		file_server
+	}
+}
