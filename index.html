@@ -147,6 +147,8 @@ canvas{position:fixed;inset:0;display:block;width:100%;height:100%;image-renderi
 #mbox h3{font-family:"Press Start 2P";font-size:12px;color:var(--cy);margin-bottom:14px;letter-spacing:2px}
 #mbox .rules li{list-style:none;font-family:"Press Start 2P";font-size:9px;line-height:1.7;color:#dcefff;padding:6px 0}
 #mbox .rules li::before{content:"▲ ";color:var(--hot)}
+.cardPrev{display:grid;place-items:center;min-height:160px;margin-bottom:12px}.cardPrev img{display:block;max-width:100%;max-height:min(50vh,540px);border:2px solid var(--line);box-shadow:0 0 0 2px #000}
+.shBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shBtns .btn{padding:12px 8px;font-size:10px}.shBtns .btn.small{font-size:9px}.shBtns .btn[hidden]{display:none}.shBtns #shSend{grid-column:1/-1}.shBtns .btn:disabled{opacity:.5;cursor:default}
 .tierList{margin-top:12px;display:grid;gap:5px}
 .tierList div{display:flex;justify-content:space-between;font-family:"Press Start 2P";font-size:8px;padding:6px 8px;background:#0a1836}
 .mlist{display:grid;gap:8px}
@@ -908,7 +910,8 @@ function finish(already){
    ${G.mode==="daily"&&G.day===TODAY?`<div class="next">СЛЕДУЮЩИЙ ЗАПУСК ЧЕРЕЗ <span id="nextT"></span></div>`:""}`;
   show("end",true);animNum($("endAlt"),0,alt," КМ",1400);
   if(!already){if(alt>=400){SFX.win();confetti()}else SFX.tier(60)}
-  $("shareBtn").onclick=()=>{SFX.click();(navigator.clipboard?navigator.clipboard.writeText(G.share):Promise.reject()).then(()=>toast("СКОПИРОВАНО!"),()=>toast("НЕ УДАЛОСЬ СКОПИРОВАТЬ"))};
+  const card={alt,title:G.title,date:G.day?dateOf(G.day):new Date(),big:fmtKm(alt)+" КМ",sub:cardLm(alt),badges:G.log.map(l=>tierOf(l.hit))};
+  $("shareBtn").onclick=()=>shareCard(card,G.share,SITE_URL);
   if($("moreBtn"))$("moreBtn").onclick=()=>startGame("endless");
   if($("againBtn"))$("againBtn").onclick=()=>startGame(G.mode,{cat:G.cat});
   $("homeBtn").onclick=goHome;
@@ -935,6 +938,114 @@ function tickNext(){const el=$("nextT");if(!el)return;const n=new Date(),m=new D
 function confetti(){const cols=["#ff4fd8","#ffd54a","#5ef38c","#5ff3ff","#c77dff"];let k=0;const iv=setInterval(()=>{for(let i=0;i<20;i++)spawn({x:rand(0,W),alt:world.cam+(H*world.anchor+10)/world.px,vx:rand(-60,60),vy:-rand(80,220),life:rand(2,3.5),ml:3.5,sz:rand(3,6),c:"spark",col:cols[i%5]});if(++k>25)clearInterval(iv)},80)}
 function updateStreak(){let s=0;for(let d=TODAY;d>0;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));if(v&&v.done)s++;else break}store.set("orb-streak",s)}
 G&&(G.cat=null);
+
+/* =================== КАРТОЧКА РЕЗУЛЬТАТА =================== */
+// 1080×1350 (4:5) — во весь экран в ленте Telegram и VK. Фон рисуется в 180×225 и растягивается без сглаживания — пиксели.
+const SITE="orbita.129-151-216-221.sslip.io",SITE_URL="https://"+SITE+"/";
+const CARD_W=1080,CARD_H=1350,CPX=6;
+const CARD_LM=[[2,"пробил облака"],[11,"обогнал авиалайнеры"],[20,"вышел в стратосферу"],[39,"выше рекордного прыжка"],[50,"покинул стратосферу"],[80,"долетел до метеоров"],[100,"пересёк линию Кармана"],[181,"догнал «Восток-1»"],[250,"долетел до северного сияния"],[408,"долетел до МКС"],[540,"долетел до «Хаббла»"],[700,"вышел на орбиту"],[1000,"улетел за 1000 км"],[2000,"покинул низкую орбиту"],[6371,"поднялся на радиус Земли"],[20200,"долетел до GPS"],[35786,"вышел на геостационар"],[100000,"Земля размером с монету"],[384400,"долетел до Луны"],[1500000,"догнал телескоп «Уэбб»"],[55000000,"долетел до Марса"],[149600000,"долетел до Солнца"]];
+const cardLm=a=>{let s="ещё на стартовой площадке";for(const[k,t]of CARD_LM)if(a>=k)s=t;return s};
+const fmtKm=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+const fmtDate=d=>[d.getDate(),d.getMonth()+1].map(v=>String(v).padStart(2,"0")).join(".")+"."+d.getFullYear();
+async function cardFonts(){try{await Promise.all([document.fonts.load('32px "Press Start 2P"',"ОРБИТА КМ 0123456789"),document.fonts.load('700 32px "JetBrains Mono"',"orbita.0123")]);await document.fonts.ready}catch(e){}}
+function cardRocket(c,x,y,s,r){const ox=Math.round(x-4.5*s),oy=Math.round(y-ROCKET.length*s);
+  const g=c.createRadialGradient(x,y+5*s,0,x,y+5*s,12*s);g.addColorStop(0,"rgba(255,170,60,.45)");g.addColorStop(1,"rgba(255,80,40,0)");c.fillStyle=g;c.fillRect(x-12*s,y-7*s,24*s,24*s);
+  const cols=["#ff3d6e","#ff8a2e","#ffd54a","#fff6c9"],L=7*s;
+  cols.forEach((col,k)=>{c.fillStyle=col;const ll=L*(1-k*.22);for(let yy=0;yy<ll;yy++){const half=Math.max(.5,(2.6-k*.55)*s*(1-yy/ll)*(.85+r()*.3));c.fillRect(Math.round(x-half),y+yy,Math.max(1,Math.round(half*2)),1)}});
+  ROCKET.forEach((row,j)=>{for(let i=0;i<row.length;i++){const k=RC[row[i]];if(k){c.fillStyle=k;c.fillRect(ox+i*s,oy+j*s,s,s)}}});
+  c.fillStyle="rgba(0,0,0,.18)";c.fillRect(ox+5*s,oy+3*s,2*s,10*s)}
+function cardBlob(c,x,y,cw,a){c.fillStyle=`rgba(255,255,255,${a})`;const h=Math.max(3,cw*.32|0);
+  c.fillRect(x-cw/2|0,y-h*.35|0,cw|0,h*.6|0);c.fillRect(x-cw*.32|0,y-h*.8|0,cw*.45|0,h*.6|0);c.fillRect(x-cw*.05|0,y-h|0,cw*.35|0,h*.8|0);
+  c.fillStyle=`rgba(190,220,245,${a})`;c.fillRect(x-cw/2|0,y+h*.2|0,cw|0,1)}
+function cardGlobe(c,x,y,R,r){
+  for(const[k,a]of[[5,.12],[3,.22],[1.5,.4]]){c.fillStyle=`rgba(95,200,255,${a})`;c.beginPath();c.arc(x,y,R+k,0,7);c.fill()}
+  c.save();c.beginPath();c.arc(x,y,R,0,7);c.clip();
+  const g=c.createLinearGradient(0,y-R,0,y+R);g.addColorStop(0,"#4aa0ff");g.addColorStop(.5,"#1d58c2");g.addColorStop(1,"#081d55");c.fillStyle=g;c.fillRect(x-R-2,y-R-2,R*2+4,R*2+4);
+  const n=Math.round(clamp(R/2,8,60)),band=R>120?.25:2;
+  for(let i=0;i<n;i++){const px=x+(r()*2-1)*R,py=y-R+r()*R*band,s=2+r()*Math.min(R,200)*.18;c.fillStyle=r()<.6?"#3fbf6a":"#2c9a52";c.fillRect(px|0,py|0,s|0,(s*.6)|0);c.fillRect((px+s*.2)|0,(py-s*.3)|0,(s*.6)|0,(s*.4)|0)}
+  for(let i=0;i<n*.7;i++){const px=x+(r()*2-1)*R,py=y-R+r()*R*band;c.fillStyle="rgba(255,255,255,.7)";c.fillRect(px|0,py|0,(3+r()*Math.min(R,200)*.15)|0,1)}
+  c.fillStyle="rgba(0,0,20,.35)";c.beginPath();c.arc(x+R*.35,y+R*.25,R,0,7);c.fill();
+  c.restore()}
+function cardScene(alt,seed,rockets){
+  const w=CARD_W/CPX,h=CARD_H/CPX,o=document.createElement("canvas");o.width=w;o.height=h;const c=o.getContext("2d"),r=rng(seed);
+  const[t,b]=skyAt(alt),[t2]=skyAt(alt*2.5+15);
+  const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,t2);g.addColorStop(.5,t);g.addColorStop(1,b);c.fillStyle=g;c.fillRect(0,0,w,h);
+  const sa=clamp((alt-20)/120,0,1);
+  for(let i=0;i<190;i++){const x=r()*w|0,y=r()*h|0,big=r()<.1,a=.3+r()*.7;if(sa>0){c.fillStyle=`rgba(255,255,255,${a*sa})`;c.fillRect(x,y,big?2:1,big?2:1)}}
+  if(alt>=200)for(let i=0;i<4;i++){const x=10+r()*(w-20)|0,y=12+r()*h*.45|0;c.fillStyle="#2a5fd0";c.fillRect(x-4,y,3,1);c.fillRect(x+2,y,3,1);c.fillStyle="#cfd8e6";c.fillRect(x-1,y-1,3,3)}
+  if(alt>=100000){const mr=clamp(5+alt/384400*20,5,30),mx=w*.8,my=h*.17;c.fillStyle="rgba(230,235,245,.15)";c.beginPath();c.arc(mx,my,mr+2,0,7);c.fill();c.fillStyle="#d9dde5";c.beginPath();c.arc(mx,my,mr,0,7);c.fill();c.fillStyle="#aab1bf";for(let i=0;i<6;i++){const a=r()*7,d=r()*mr*.7;c.beginPath();c.arc(mx+Math.cos(a)*d,my+Math.sin(a)*d,1+r()*mr*.22,0,7);c.fill()}}
+  if(alt<60){const a=clamp(1.15-alt/55,.35,1);for(let i=0;i<16;i++)cardBlob(c,r()*w,h*.8+r()*h*.12,24+r()*40,a);
+    if(alt<15)for(let i=0;i<4;i++)cardBlob(c,r()*w,h*.15+r()*h*.4,16+r()*30,.55*(1-alt/15))}
+  else{const R=w*clamp(3.2*Math.pow(100/Math.max(alt,100),.35),.2,3.2);
+    if(R>=w*.3)cardGlobe(c,w/2,h*.83+R,R,r);else cardGlobe(c,w*.18,h*.17,clamp(R*.7,7,24),r)}
+  for(const k of rockets)cardRocket(c,k.x*w|0,k.y*h|0,3,r);
+  return o}
+function cardFont(c,size,mono){c.font=mono?`700 ${size}px "JetBrains Mono",monospace`:`${size}px "Press Start 2P",monospace`}
+function cardTxt(c,s,x,y,size,col,o={}){
+  cardFont(c,size,o.mono);while(c.measureText(s).width>(o.max||960)&&size>12){size-=4;cardFont(c,size,o.mono)}
+  c.textAlign=o.al||"center";c.textBaseline="alphabetic";const wd=c.measureText(s).width;
+  c.fillStyle="#000";c.fillText(s,x,y+Math.max(3,Math.round(size/14)));
+  let fill=col;if(col==="rainbow"){const x0=o.al==="left"?x:o.al==="right"?x-wd:x-wd/2;fill=c.createLinearGradient(x0,0,x0+wd,0);["#ff4fd8","#ffd54a","#5ef38c","#5ff3ff","#c77dff"].forEach((k,i)=>fill.addColorStop(i/4,k))}
+  c.save();c.shadowColor=o.glow||(col==="rainbow"?"#ff4fd8":col);c.shadowBlur=o.blur!=null?o.blur:size*.45;c.fillStyle=fill;c.fillText(s,x,y);c.restore();return size}
+function cardBadge(c,T,x,y,S){
+  c.fillStyle="#000";c.fillRect(x-4,y-4,S+8,S+8);
+  c.save();c.shadowColor=T.c;c.shadowBlur=S*.4;c.fillStyle=T.p===100?"#2a0f3a":T.c;c.fillRect(x,y,S,S);c.restore();
+  const b=Math.max(3,S/12|0);
+  if(T.p===100){c.strokeStyle=T.c;c.lineWidth=b;c.strokeRect(x+b/2,y+b/2,S-b,S-b);const I=ICONS.star,n=I.m.length,p=Math.max(1,Math.floor(S*.66/n)),ox=x+(S-p*n)/2|0,oy=y+(S-p*n)/2|0;
+    I.m.forEach((row,j)=>{for(let i=0;i<row.length;i++){const k=I.c[row[i]];if(k){c.fillStyle=k;c.fillRect(ox+i*p,oy+j*p,p,p)}}})}
+  else{c.fillStyle="rgba(255,255,255,.35)";c.fillRect(x,y,S,b);c.fillRect(x,y,b,S);c.fillStyle="rgba(0,0,0,.25)";c.fillRect(x,y+S-b,S,b);c.fillRect(x+S-b,y,b,S)}}
+function cardBadges(c,list,cx0,y,maxW,maxS){
+  const n=list.length;if(!n)return y;const cap=36,shown=list.slice(0,n>cap?cap-1:cap),extra=n-shown.length,items=shown.length+(extra?1:0);
+  const per=items<=8?items:Math.ceil(items/Math.ceil(items/12)),gap=Math.max(10,Math.round(maxS*.2)),S=Math.min(maxS,Math.floor((maxW-(per-1)*gap)/per)),rows=Math.ceil(items/per);
+  for(let k=0;k<items;k++){const row=k/per|0,col=k%per,inRow=Math.min(per,items-row*per),x=Math.round(cx0-(inRow*S+(inRow-1)*gap)/2+col*(S+gap)),yy=y+row*(S+gap);
+    if(k<shown.length)cardBadge(c,shown[k],x,yy,S);else cardTxt(c,"+"+extra,x+S/2,yy+S*.68,Math.max(12,S*.36|0),"#eaf6ff",{max:S})}
+  return y+rows*(S+gap)-gap}
+// o: {alt,title,date,big,sub,badges}; дуэль: {alt,title,date,head,duel:[{name,score,badges,win},…]}
+async function makeCard(o){
+  await cardFonts();
+  const cv=document.createElement("canvas");cv.width=CARD_W;cv.height=CARD_H;const c=cv.getContext("2d");
+  const D=o.duel,lo=D&&D[0].score!==D[1].score?(D[0].score<D[1].score?0:1):-1;
+  const rk=D?D.map((p,i)=>({x:i?.72:.28,y:.43+(i===lo?.05:0)})):[{x:.5,y:.43}];
+  c.imageSmoothingEnabled=false;c.drawImage(cardScene(o.alt,Math.round(o.alt)*7+(o.title||"").length,rk),0,0,CARD_W,CARD_H);
+  const v=c.createLinearGradient(0,0,0,240);v.addColorStop(0,"rgba(0,3,12,.55)");v.addColorStop(1,"rgba(0,3,12,0)");c.fillStyle=v;c.fillRect(0,0,CARD_W,240);
+  cardTxt(c,"ОРБИТА",60,104,48,"#5ff3ff",{al:"left",max:520});
+  cardTxt(c,fmtDate(o.date||new Date()),1020,96,24,"#dcefff",{al:"right",max:400,blur:0});
+  cardTxt(c,(o.title||"").toUpperCase(),60,170,32,"#ffd54a",{al:"left",max:960,blur:10});
+  if(D){
+    cardTxt(c,o.head,540,800,64,lo<0?"#ffd54a":"rainbow");
+    cardTxt(c,"VS",540,960,48,"#ff4fd8");
+    D.forEach((p,i)=>{const x=i?810:270;
+      cardTxt(c,p.name.toUpperCase(),x,890,32,p.win?"#ffd54a":"#eaf6ff",{max:400,blur:p.win?14:0});
+      cardTxt(c,fmtKm(p.score)+" КМ",x,975,56,"#ffffff",{max:420,glow:p.win?"#ffd54a":"#5ff3ff"});
+      cardBadges(c,p.badges,x,1020,420,48)});
+  }else{
+    cardTxt(c,o.big,540,790,128,"#ffffff",{glow:"#5ff3ff"});
+    cardTxt(c,(o.sub||"").toUpperCase(),540,872,32,"#ffd54a",{blur:12});
+    cardBadges(c,o.badges||[],540,930,960,104);
+  }
+  c.fillStyle="rgba(2,6,20,.84)";c.fillRect(0,1236,CARD_W,114);c.fillStyle="rgba(95,243,255,.7)";c.fillRect(0,1236,CARD_W,4);
+  cardTxt(c,"А ТЫ УЛЕТИШЬ ВЫШЕ?",540,1288,24,"#ff4fd8",{blur:10});
+  cardTxt(c,SITE,540,1332,34,"#5ff3ff",{mono:1,blur:8});
+  return cv}
+let shareTok=null,shareURL=null;
+async function shareCard(o,text,url){
+  SFX.click();const tok=shareTok={},full=text+"\n"+url;
+  modal(`<h3>${ico("share",14)} ПОДЕЛИТЬСЯ</h3><div class="cardPrev" id="cardPrev"><div class="next">РИСУЕМ КАРТОЧКУ…</div></div>
+   <div class="shBtns"><button class="btn hot" id="shSend" hidden>${ico("share",14)} ОТПРАВИТЬ</button><button class="btn" id="shDl" disabled>СКАЧАТЬ</button><button class="btn" id="shImg" hidden>КОПИРОВАТЬ КАРТИНКУ</button>
+   <button class="btn small" id="shTg">В TELEGRAM</button><button class="btn small" id="shVk">ВО ВКОНТАКТЕ</button><button class="btn small" id="shTxt">КОПИРОВАТЬ ТЕКСТ</button></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+  $("shTxt").onclick=()=>{SFX.click();copy(full)};
+  $("shTg").onclick=()=>{SFX.click();window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,"_blank","noopener")};
+  $("shVk").onclick=()=>{SFX.click();window.open(`https://vk.com/share.php?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,"_blank","noopener")};
+  let blob;try{const cv=await makeCard(o);blob=await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("blob")),"image/png"))}
+  catch(e){if(shareTok===tok&&$("cardPrev"))$("cardPrev").innerHTML=`<div class="next">НЕ ПОЛУЧИЛОСЬ НАРИСОВАТЬ</div>`;return}
+  if(shareTok!==tok||!$("cardPrev"))return;
+  if(shareURL)URL.revokeObjectURL(shareURL);const u=shareURL=URL.createObjectURL(blob),name=`orbita-${Math.round(o.alt)}km.png`,file=new File([blob],name,{type:"image/png"});
+  $("cardPrev").innerHTML=`<img src="${u}" alt="карточка результата">`;
+  const dl=$("shDl");dl.disabled=false;dl.onclick=()=>{SFX.click();const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove()};
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){const b=$("shSend");b.hidden=false;b.onclick=()=>{SFX.click();navigator.share({files:[file],text:full}).catch(e=>{if(!e||e.name!=="AbortError")toast("НЕ ВЫШЛО ОТПРАВИТЬ")})}}}catch(e){}
+  if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){const b=$("shImg");b.hidden=false;b.onclick=()=>{SFX.click();navigator.clipboard.write([new ClipboardItem({"image/png":blob})]).then(()=>toast("КАРТИНКА СКОПИРОВАНА!"),()=>toast("НЕ УДАЛОСЬ СКОПИРОВАТЬ"))}}
+}
 
 /* =================== ДУЭЛЬ =================== */
 async function rpc(fn,args){const r=await fetch(`${API}/duel/${fn}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(args)});if(!r.ok)throw new Error(await r.text());return r.json()}
@@ -1019,11 +1130,15 @@ function renderDuel(d){
   const e=$("end");const keep=e.scrollTop;
   e.innerHTML=`<h2>${ico("duel",14)} ДУЭЛЬ ${esc(d.code)}</h2><div class="dvs">${box(P[0],0)}<span>VS</span>${box(P[1],1)}</div>${head}
    <table class="dt">${rows}</table>
-   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="dLink">${ico("share",14)} ССЫЛКА</button><button class="btn hot" id="dAgain">${ico("duel",14)} НОВАЯ ДУЭЛЬ</button></div>
+   ${both?`<div class="rowBtns" style="margin-top:16px"><button class="btn hot" id="dShare">${ico("share",14)} ПОДЕЛИТЬСЯ</button></div>`:""}
+   <div class="rowBtns" style="margin-top:${both?8:16}px"><button class="btn" id="dLink">${ico("share",14)} ССЫЛКА</button><button class="btn hot" id="dAgain">${ico("duel",14)} НОВАЯ ДУЭЛЬ</button></div>
    <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>`;
   e.scrollTop=keep;show("end",true);
   $("dLink").onclick=()=>{SFX.click();copy(both?`Дуэль в «Орбите»: ${P[0].name} ${P[0].score} км vs ${P[1].name} ${P[1].score} км\n${duelLink(d.code)}`:`Дуэль в «Орбите»! Кто улетит выше? Код ${d.code}\n${duelLink(d.code)}`)};
   $("dAgain").onclick=()=>{SFX.click();duelMenu()};$("homeBtn").onclick=goHome;
+  if(both)$("dShare").onclick=()=>shareCard({alt:Math.max(P[0].score,P[1].score),title:"ДУЭЛЬ "+d.code,head:win===-1?"НИЧЬЯ!":"ПОБЕДА: "+P[win].name.toUpperCase(),
+    duel:P.map((p,sl)=>({name:p.name,score:p.score,win:win===sl,badges:d.qs.map((q,i)=>TIERS[(p.log[i]||{}).pts]||TIERS[0])}))},
+    `Дуэль в «Орбите»: ${P[0].name} ${P[0].score} км vs ${P[1].name} ${P[1].score} км`,duelLink(d.code));
   if(both){stopPoll();if(!G.duel.shown){G.duel.shown=1;if(me!=null&&G.duel.fresh!==false){if(win===me){SFX.win();confetti()}else SFX.tier(30)}}}
 }
 
@@ -1284,7 +1399,10 @@ function roomEndPanel(){
   const rr=s.rarest,rq=rr&&Qs[rr.qid];
   const all=(s.rounds||[]).map((L,i)=>`<div class="rq" style="margin-top:14px">${i+1}. ${esc(Qs[L.qid]?Qs[L.qid].q:"?")}</div>${ansRows(L,false)}`).join("");
   const medal=["🥇","🥈","🥉"];
-  R.share=`ОРБИТА · КОМНАТА ${s.code}\n${ps.slice(0,5).map((p,i)=>`${medal[i]||"▲"} ${p.name} — ${p.score} км`).join("\n")}${rr?`\nСамый редкий ответ: «${rr.label}» (${rr.name})`:""}\n${roomLink(s.code)}`;
+  R.share=`ОРБИТА · КОМНАТА ${s.code}\n${ps.slice(0,5).map((p,i)=>`${medal[i]||"▲"} ${p.name} — ${p.score} км`).join("\n")}${rr?`\nСамый редкий ответ: «${rr.label}» (${rr.name})`:""}`;
+  const meS=(ps.find(p=>p.id===R.id)||{score:0}).score;
+  R.card={alt:meS,title:"КОМНАТА "+s.code,big:fmtKm(meS)+" КМ",sub:ps.length<2?cardLm(meS):pl===1?`1 место из ${ps.length} · победа!`:`${pl} место из ${ps.length}`,
+    badges:(s.rounds||[]).map(L=>{const a=(L.ans||[]).find(a=>a.id===R.id);return TIERS[a?a.pts:0]||TIERS[0]})};
   const e=$("end");e.dataset.v="end";const keep=e.scrollTop;
   e.innerHTML=`<h2>${ico("party",14)} КОМНАТА ${esc(s.code)} · ИТОГИ</h2><div class="podium">${pod}</div>
    <div class="dwin ${pl===1&&ps.length>1?"rainbow":""}" style="color:var(--cy)">${ps.length<2?"ПОЛЁТ ЗАВЕРШЁН":pl===1?"ТЫ ПОБЕДИЛ(А)!":`ТЫ НА ${pl} МЕСТЕ ИЗ ${ps.length}`}</div>
@@ -1296,7 +1414,7 @@ function roomEndPanel(){
    <div class="rowBtns"><button class="btn small" id="rLeave">${ico("home",12)} ВЫЙТИ ИЗ КОМНАТЫ</button></div>`;
   const det=e.querySelector("details");if(det&&R.detOpen)det.open=true;if(det)det.ontoggle=()=>{if(R)R.detOpen=det.open};
   e.scrollTop=keep;show("end",true);
-  $("rShare").onclick=()=>{SFX.click();copy(R.share)};$("rLeave").onclick=roomLeave;
+  $("rShare").onclick=()=>shareCard(R.card,R.share,roomLink(s.code));$("rLeave").onclick=roomLeave;
   if(host)$("rAgain").onclick=()=>{SFX.click();$("rAgain").disabled=true;roomCall("again",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{toast("НЕ ВЫШЛО");if($("rAgain"))$("rAgain").disabled=false})};
 }
 
