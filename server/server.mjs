@@ -9,6 +9,11 @@
 // POST /api/duel/orbita_duel_save   {p_code,p_token,p_step,p_score,p_log,p_done} -> true
 // POST /api/duel/orbita_duel_get    {p_code,p_token} -> {code,qs,players:[{slot,name,score,step,done,log}],me}
 // GET  /api/duel/stream?code=XXXXX  SSE: событие "ch" при каждом изменении дуэли
+// POST /api/answer                {pid,qid,q,label|null,mode,day?} -> {ok,counted}  (ответ игрока в статистику; время вышло = label null)
+// GET  /api/stats?q=<id>          -> {total,top:[[label,n],...]}  (что отвечают игроки, кэш 30 с)
+// POST /api/daily                 {pid,day,score,qs:[7 id]} -> {players,below,rare:[[qid,label,n],...]}
+// GET  /api/admin/answers         ?q=<id> — ответы игроков (без q — сводка по вопросам)
+// POST /api/admin/answers/del     {qid,label} — убрать мусорный ответ из статистики
 // GET  /api/health
 //
 // Настройки — переменные окружения (файл /etc/orbita/env): LLM_KEY, ADMIN_TOKEN,
@@ -17,8 +22,10 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const env = process.env;
 const PORT = Number(env.PORT) || 8790;
@@ -43,6 +50,14 @@ CREATE TABLE IF NOT EXISTS duels(code TEXT PRIMARY KEY, qs TEXT NOT NULL, create
 CREATE TABLE IF NOT EXISTS duel_players(code TEXT NOT NULL, slot INTEGER NOT NULL, name TEXT NOT NULL, token TEXT NOT NULL,
   step INTEGER DEFAULT 0, score INTEGER DEFAULT 0, log TEXT DEFAULT '[]', done INTEGER DEFAULT 0, t INTEGER,
   PRIMARY KEY(code, slot));
+-- статистика ответов игроков: q — текст вопроса (не зависит от порядка в списках), k — нормализованный ответ
+CREATE TABLE IF NOT EXISTS ans(q TEXT NOT NULL, k TEXT NOT NULL, label TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(q, k));
+CREATE TABLE IF NOT EXISTS ans_tot(q TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS ans_day(day INTEGER NOT NULL, q TEXT NOT NULL, k TEXT NOT NULL, label TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(day, q, k));
+CREATE TABLE IF NOT EXISTS ans_seen(day INTEGER NOT NULL, pid TEXT NOT NULL, q TEXT NOT NULL, PRIMARY KEY(day, pid, q));
+CREATE TABLE IF NOT EXISTS ans_ip(day INTEGER NOT NULL, ip TEXT NOT NULL, q TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(day, ip, q));
+CREATE TABLE IF NOT EXISTS scores(day INTEGER NOT NULL, pid TEXT NOT NULL, score INTEGER NOT NULL, t INTEGER, PRIMARY KEY(day, pid));
+CREATE INDEX IF NOT EXISTS scores_day ON scores(day, score);
 `);
 
 // ---------- утилиты ----------
@@ -278,6 +293,146 @@ function duelRpc(fn, b, ip) {
   return [404, { error: 'unknown_fn' }];
 }
 
+// ---------- статистика ответов игроков ----------
+// Вопросы и списки ответов берём из тех же data/*.js, что и игра (перечитываем, если файлы поменялись).
+const DATA_DIR = env.DATA_DIR || fileURLToPath(new URL('../data/', import.meta.url));
+const DATA_FILES = ['q1.js', 'q2.js', 'q3.js', 'q4.js', 'q5.js', 'm1.js', 'm2.js', 'overrides.js', 'wd/index.js'];
+// та же нормализация, что norm() в index.html — ключи совпадают с игрой
+const gnorm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/\+\+/g, ' плюс плюс').replace(/#/g, ' шарп').replace(/[-‐–—]/g, ' ')
+  .replace(/[^a-zа-я0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+let DATA = null, dataSig = '', dataChecked = 0;
+function data() {
+  const now = Date.now();
+  if (DATA && now - dataChecked < 60000) return DATA;
+  dataChecked = now;
+  const sig = DATA_FILES.map((f) => { try { return statSync(join(DATA_DIR, f)).mtimeMs; } catch { return 'x'; } }).join(',');
+  if (DATA && sig === dataSig) return DATA;
+  const ctx = vm.createContext({ window: {} });
+  for (const f of DATA_FILES) {
+    try { vm.runInContext(readFileSync(join(DATA_DIR, f), 'utf8'), ctx, { filename: f, timeout: 3000 }); }
+    catch (e) { if (e.code !== 'ENOENT') console.error('orbita data', f, e.message); }
+  }
+  const W = ctx.window;
+  const qs = Array.from(W.ORB || [], (r) => ({ q: String(r[1]), lists: [r[2], r[3], r[4], (W.ORB_MORE || {})[r[1]]], ov: (W.ORB_OV || {})[r[1]], keys: null }));
+  DATA = { qs, wd: { ...(W.ORB_WD || {}) }, byText: new Map(qs.map((x, i) => [x.q, i])) };
+  dataSig = sig;
+  return DATA;
+}
+// все ключи настоящих ответов вопроса: ручные списки + Wikidata + правки (минус удалённые)
+function keysOf(id) {
+  const D = data(), Q = D.qs[id];
+  if (Q.keys) return Q.keys;
+  const keys = new Set(), add = (n) => { const k = gnorm(n); if (k) keys.add(k); };
+  for (const list of Q.lists) for (let x of String(list || '').split(',')) { x = x.trim().replace(/\s+\d+!?$/, ''); if (x) x.split('/').forEach(add); }
+  if (D.wd[id]) { try { const d = JSON.parse(readFileSync(join(DATA_DIR, 'wd', id + '.json'), 'utf8')); if (d.q === Q.q) for (const [, ...names] of d.a) names.forEach(add); } catch {} }
+  const o = Q.ov || {};
+  for (const [, ...names] of o.add || []) names.forEach(add);
+  for (const k of o.del || []) keys.delete(gnorm(k));
+  return (Q.keys = keys);
+}
+const qOkVerdicts = db.prepare('SELECT a, label FROM verdicts WHERE q=? AND ok=1');
+function realLabel(id, k) {
+  if (keysOf(id).has(k)) return true;
+  return qOkVerdicts.all(data().qs[id].q).some((v) => gnorm(v.label || '') === k || gnorm(v.a) === k);
+}
+// номер дня как в игре (эпоха 1.11.2026, время московское)
+const dayNow = () => Math.floor((Date.now() + 3 * 3600e3 - Date.UTC(2026, 10, 1)) / 864e5) + 1;
+const okPid = (p) => typeof p === 'string' && /^[0-9a-f]{32}$/.test(p);
+const okQid = (x) => Number.isInteger(x) && x >= 0 && x < data().qs.length;
+const MODES = new Set(['daily', 'archive', 'pack', 'endless', 'duel']);
+const ipHash = (ip) => sha('ip:' + ip).slice(0, 24);
+
+const qSeen = db.prepare('INSERT OR IGNORE INTO ans_seen(day,pid,q) VALUES(?,?,?)');
+const qIpGet = db.prepare('SELECT n FROM ans_ip WHERE day=? AND ip=? AND q=?');
+const qIpInc = db.prepare('INSERT INTO ans_ip(day,ip,q,n) VALUES(?,?,?,1) ON CONFLICT(day,ip,q) DO UPDATE SET n=n+1');
+const qTotInc = db.prepare('INSERT INTO ans_tot(q,n) VALUES(?,1) ON CONFLICT(q) DO UPDATE SET n=n+1');
+const qAnsInc = db.prepare('INSERT INTO ans(q,k,label,n) VALUES(?,?,?,1) ON CONFLICT(q,k) DO UPDATE SET n=n+1');
+const qDayInc = db.prepare('INSERT INTO ans_day(day,q,k,label,n) VALUES(?,?,?,?,1) ON CONFLICT(day,q,k) DO UPDATE SET n=n+1');
+const IP_PER_Q_DAY = 4; // с одного адреса — не больше 4 засчитанных ответов на вопрос в день (семья, общежитие)
+const statCache = new Map();
+
+function answer(b, ip) {
+  if (!b || !okPid(b.pid) || !okQid(b.qid) || typeof b.q !== 'string' || !MODES.has(b.mode)) return [400, { ok: false, error: 'bad_request' }];
+  const Q = data().qs[b.qid];
+  if (Q.q !== b.q.trim()) return [400, { ok: false, error: 'bad_question' }];
+  let label = null, k = null;
+  if (b.label != null) {
+    if (typeof b.label !== 'string') return [400, { ok: false, error: 'bad_request' }];
+    label = b.label.trim();
+    if (!label || label.length > MAX_A || CONTROL_RE.test(label)) return [400, { ok: false, error: 'bad_request' }];
+    k = gnorm(label);
+    // в статистику попадают только настоящие ответы; остальное (модели техники, мусор) — только в общее число
+    if (!k || !realLabel(b.qid, k)) label = k = null;
+  }
+  if (!limit('ans:' + ip, 40)) return [429, { ok: false, error: 'rate_limited' }];
+  const day = dayNow(), ih = ipHash(ip);
+  if (!qSeen.run(day, b.pid, Q.q).changes) return [200, { ok: true, counted: false }];
+  if ((qIpGet.get(day, ih, Q.q)?.n || 0) >= IP_PER_Q_DAY) return [200, { ok: true, counted: false }];
+  qIpInc.run(day, ih, Q.q);
+  qTotInc.run(Q.q);
+  if (k) {
+    qAnsInc.run(Q.q, k, label);
+    // для «самого редкого ответа дня» — только ежедневный запуск своего дня
+    if (b.mode === 'daily' && Number.isInteger(b.day) && Math.abs(b.day - day) <= 1) qDayInc.run(b.day, Q.q, k, label);
+  }
+  statCache.delete(Q.q);
+  return [200, { ok: true, counted: true }];
+}
+
+const qTot = db.prepare('SELECT n FROM ans_tot WHERE q=?');
+const qTop = db.prepare('SELECT label, n FROM ans WHERE q=? AND n>0 ORDER BY n DESC, label LIMIT ?');
+function stats(id) {
+  if (!okQid(id)) return [400, { ok: false, error: 'bad_request' }];
+  const q = data().qs[id].q, now = Date.now();
+  const c = statCache.get(q);
+  if (c && now - c.t < 30000) return [200, c.v];
+  const v = { total: qTot.get(q)?.n || 0, top: qTop.all(q, 300).map((r) => [r.label, r.n]) };
+  if (statCache.size > 2000) statCache.clear();
+  statCache.set(q, { t: now, v });
+  return [200, v];
+}
+
+const qScoreIns = db.prepare('INSERT OR IGNORE INTO scores(day,pid,score,t) VALUES(?,?,?,?)');
+const qScoreMine = db.prepare('SELECT score FROM scores WHERE day=? AND pid=?');
+const qScoreCnt = db.prepare('SELECT COUNT(*) AS n, SUM(score < ?) AS below FROM scores WHERE day=?');
+function daily(b, ip) {
+  if (!b || !okPid(b.pid) || !Number.isInteger(b.day) || Math.abs(b.day - dayNow()) > 1) return [400, { ok: false, error: 'bad_request' }];
+  if (!Number.isInteger(b.score) || b.score < 0 || b.score > 700 || b.score % 5) return [400, { ok: false, error: 'bad_request' }];
+  if (!Array.isArray(b.qs) || b.qs.length !== 7 || !b.qs.every(okQid)) return [400, { ok: false, error: 'bad_request' }];
+  if (!limit('day:' + ip, 20)) return [429, { ok: false, error: 'rate_limited' }];
+  qScoreIns.run(b.day, b.pid, b.score, Date.now());
+  const mine = qScoreMine.get(b.day, b.pid).score;
+  const { n, below } = qScoreCnt.get(mine, b.day);
+  const D = data(), texts = [...new Set(b.qs.map((id) => D.qs[id].q))];
+  const rows = db.prepare(`SELECT q, label, n FROM ans_day WHERE day=? AND q IN (${texts.map(() => '?').join(',')}) ORDER BY n ASC LIMIT 300`).all(b.day, ...texts);
+  return [200, { players: Number(n), below: Number(below || 0), rare: rows.map((r) => [D.byText.get(r.q), r.label, r.n]) }];
+}
+
+function adminAnswers(url) {
+  const D = data(), id = url.searchParams.get('q');
+  if (id != null && id !== '') {
+    const qid = Number(id);
+    if (!okQid(qid)) return [400, { ok: false, error: 'bad_request' }];
+    const q = D.qs[qid].q;
+    return [200, { qid, q, total: qTot.get(q)?.n || 0, top: qTop.all(q, 1000).map((r) => [r.label, r.n]) }];
+  }
+  const rows = db.prepare('SELECT t.q, t.n AS total, (SELECT COUNT(*) FROM ans a WHERE a.q=t.q) AS labels FROM ans_tot t ORDER BY t.n DESC').all();
+  const sc = db.prepare('SELECT day, COUNT(*) AS n FROM scores WHERE day>=? GROUP BY day ORDER BY day DESC').all(dayNow() - 6);
+  return [200, { items: rows.map((r) => ({ qid: D.byText.get(r.q) ?? null, q: r.q, total: r.total, labels: r.labels })), days: sc }];
+}
+function adminAnswerDel(b) {
+  if (!b || !okQid(b.qid) || typeof b.label !== 'string') return [400, { ok: false, error: 'bad_request' }];
+  const q = data().qs[b.qid].q, k = gnorm(b.label);
+  const r = db.prepare('DELETE FROM ans WHERE q=? AND k=?').run(q, k);
+  db.prepare('DELETE FROM ans_day WHERE q=? AND k=?').run(q, k);
+  statCache.delete(q);
+  return [200, { ok: true, deleted: Number(r.changes) }];
+}
+// старые отметки «уже ответил сегодня» больше не нужны
+function prune() { const d = dayNow() - 3; db.prepare('DELETE FROM ans_seen WHERE day<?').run(d); db.prepare('DELETE FROM ans_ip WHERE day<?').run(d); }
+prune(); setInterval(prune, 3600e3).unref();
+
+
 // ---------- HTTP ----------
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -318,16 +473,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method !== 'POST' && !(path === '/admin/list' && req.method === 'GET')) return send(405, { error: 'method' });
+    if (path === '/stats' && req.method === 'GET') {
+      if (!limit('st:' + ip, 120)) return send(429, { ok: false, error: 'rate_limited' });
+      const [st, v] = stats(Number(url.searchParams.get('q') ?? 'x'));
+      if (st === 200) headers['Cache-Control'] = 'public, max-age=30';
+      return send(st, v);
+    }
+    const GETS = ['/admin/list', '/admin/answers'];
+    if (req.method !== 'POST' && !(GETS.includes(path) && req.method === 'GET')) return send(405, { error: 'method' });
     if (path.startsWith('/admin/')) {
       if (!isAdmin(req)) return send(401, { ok: false, error: 'unauthorized' });
       if (path === '/admin/list') return send(...adminList(url));
+      if (path === '/admin/answers') return send(...adminAnswers(url));
       if (path === '/admin/set') return send(...adminSet(JSON.parse(await readBody(req))));
+      if (path === '/admin/answers/del') return send(...adminAnswerDel(JSON.parse(await readBody(req))));
       return send(404, { error: 'not_found' });
     }
     let body;
     try { body = JSON.parse(await readBody(req)); } catch { return send(400, { ok: false, error: 'bad_request' }); }
     if (path === '/check') return send(...(await check(body, ip)));
+    if (path === '/answer') return send(...answer(body, ip));
+    if (path === '/daily') return send(...daily(body, ip));
     const m = path.match(/^\/duel\/(orbita_duel_\w+)$/);
     if (m) return send(...duelRpc(m[1], body, ip));
     return send(404, { ok: false, error: 'not_found' });

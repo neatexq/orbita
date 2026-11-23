@@ -39,7 +39,7 @@ textarea{width:100%;height:220px;background:var(--pn);color:var(--tx);border:1px
 <body>
 <header>
   <h1>Орбита · разметка</h1>
-  <span class="tabs"><button id="tabQ" class="on">Вопросы</button> <button id="tabAI">Ответы ИИ</button> <button id="tabEx">Экспорт</button></span>
+  <span class="tabs"><button id="tabQ" class="on">Вопросы</button> <button id="tabAI">Ответы ИИ</button> <button id="tabPl">Ответы игроков</button> <button id="tabEx">Экспорт</button></span>
   <span class="mu" id="stat"></span>
 </header>
 <div class="wrap">
@@ -169,6 +169,38 @@ function renderAI(){
     saveOV();try{await aiApi("/admin/set",{key:it.key,ok:false});it.ok=false}catch(e){alert("KV: "+e.message)}renderAI()});
 }
 
+/* ---------- что отвечают игроки (статистика сервера) ---------- */
+// Сводка: сколько ответов на каждый вопрос; по клику — все ответы игроков с числом выборов.
+// «убрать» стирает ответ из статистики на сервере и добавляет его в правки (del), чтобы игра его больше не засчитывала.
+let plSum=null;
+function plAuth(){return`<div class="bar"><input id="au" placeholder="https://orbita.129-151-216-221.sslip.io/api" value="${esc(AI.url)}" style="width:320px"><input id="at" type="password" placeholder="ADMIN_TOKEN" value="${esc(AI.token)}" style="width:200px"><button id="pl" class="ok">Загрузить</button></div>`}
+function showPl(){
+  tab="pl";nav();
+  $("main").innerHTML=`<h2 style="margin:4px 0">Ответы игроков</h2><p class="mu">Проценты в игре — смесь списка и этих чисел: (процент·${40} + выборы) / (${40} + всего ответов). Мусор видно сразу — его можно убрать.</p>${plAuth()}<div id="plist"></div>`;
+  $("pl").onclick=async()=>{AI={url:$("au").value.trim(),token:$("at").value.trim()};LS.set("orbrev-ai",AI);$("plist").innerHTML=`<p class="mu">загружаю…</p>`;
+    try{plSum=await aiApi("/admin/answers");renderPl()}catch(e){$("plist").innerHTML=`<p style="color:var(--hot)">ошибка: ${esc(e.message)}</p>`}};
+  if(plSum)renderPl();
+}
+function renderPl(){
+  const it=plSum.items||[],days=plSum.days||[];
+  $("plist").innerHTML=`<p class="mu">вопросов с ответами: ${it.length} · ответов всего: ${it.reduce((t,x)=>t+x.total,0)}${days.length?" · игроков дня: "+days.map(d=>`#${d.day}: ${d.n}`).join(", "):""}</p>
+   <table><tr><th>вопрос</th><th>ответов</th><th>разных</th></tr>${it.map(x=>`<tr><td><a href="#pl${x.qid}" style="color:var(--ac)">${x.qid??"?"}. ${esc(x.q)}</a></td><td>${x.total}</td><td>${x.labels}</td></tr>`).join("")}</table>`;
+}
+async function showPlQ(id){
+  tab="pl";nav();const q=Qs[id];if(!q)return showPl();
+  $("main").innerHTML=`<h2 style="margin:4px 0">${id}. ${esc(q.q)}</h2><div class="bar"><a href="#pl" style="color:var(--ac)">← все вопросы</a></div><div id="plq"><p class="mu">загружаю…</p></div>`;
+  let d;try{[d]=await Promise.all([aiApi("/admin/answers?q="+id),loadWD(id)])}catch(e){$("plq").innerHTML=`<p style="color:var(--hot)">ошибка: ${esc(e.message)} — введи токен на вкладке «Ответы игроков»</p>`;return}
+  const o=OV[q.q]||{},del=new Set((o.del||[]).map(norm));
+  const rows=d.top.map(([label,n])=>{const k=norm(label),a=q.map.get(k);return{label,n,k,a,st:del.has(k)?"убран":a?(a.src==="wd"?"wikidata":a.src==="ov"?"правка":"список"):"ИИ"}});
+  $("plq").innerHTML=`<p class="mu">ответов: ${d.total} (вместе с «время вышло» и незасчитанными) · разных: ${rows.length}</p>
+   <table><tr><th>ответ</th><th>выборов</th><th>доля</th><th>в списке</th><th>очки по списку</th><th></th></tr>
+   ${rows.map((r,i)=>`<tr class="${r.st==="убран"?"dl":""}"><td>${esc(r.label)}</td><td>${r.n}</td><td>${d.total?Math.round(r.n/d.total*100):0}%</td><td><span class="src ${r.a&&r.a.src==="wd"?"wd":r.a?"":"ai"}">${r.st}</span>${r.a?` <span class="mu">${r.a.pct}%</span>`:""}</td><td class="${r.a?"t"+ptsOf(r.a):""}">${r.a?ptsOf(r.a):"—"}</td>
+    <td><button class="hot" data-x="${i}">убрать</button></td></tr>`).join("")}</table>`;
+  $("plq").querySelectorAll("[data-x]").forEach(b=>b.onclick=async()=>{const r=rows[+b.dataset.x];if(!confirm(`Убрать «${r.label}» из статистики и из игры?`))return;
+    try{await aiApi("/admin/answers/del",{qid:id,label:r.label})}catch(e){alert("сервер: "+e.message);return}
+    const ov=ovOf(q);ov.del=ov.del||[];if(!ov.del.some(x=>norm(x)===r.k))ov.del.push(r.k);ov.add=(ov.add||[]).filter(x=>norm(x[1])!==r.k);saveOV();showPlQ(id)});
+}
+
 /* ---------- экспорт ---------- */
 function ovText(){
   const keys=Object.keys(OV).sort((a,b)=>Qs.findIndex(q=>q.q===a)-Qs.findIndex(q=>q.q===b));
@@ -185,9 +217,10 @@ function showEx(){
   $("rs").onclick=()=>{if(!confirm("Выбросить все несохранённые правки?"))return;OV=JSON.parse(JSON.stringify(window.ORB_OV||{}));saveOV();showEx()};
 }
 
-function route(){const h=location.hash.slice(1);if(h==="ai")showAI();else if(h==="ex")showEx();else{filt="";limit=300;showQ(Math.max(0,Math.min(Qs.length-1,+h||0)))}}
-$("qf").oninput=nav;$("tabQ").onclick=()=>{location.hash=String(cur)};$("tabAI").onclick=()=>{location.hash="ai"};$("tabEx").onclick=()=>{location.hash="ex"};
-addEventListener("hashchange",()=>{route();document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",(b.id==="tabAI"&&tab==="ai")||(b.id==="tabEx"&&tab==="ex")||(b.id==="tabQ"&&tab==="q")))});
+function route(){const h=location.hash.slice(1);if(h==="ai")showAI();else if(h==="ex")showEx();else if(h==="pl")showPl();else if(/^pl\d+$/.test(h))showPlQ(+h.slice(2));else{filt="";limit=300;showQ(Math.max(0,Math.min(Qs.length-1,+h||0)))}}
+function tabsUI(){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",(b.id==="tabAI"&&tab==="ai")||(b.id==="tabEx"&&tab==="ex")||(b.id==="tabPl"&&tab==="pl")||(b.id==="tabQ"&&tab==="q")))}
+$("qf").oninput=nav;$("tabQ").onclick=()=>{location.hash=String(cur)};$("tabAI").onclick=()=>{location.hash="ai"};$("tabPl").onclick=()=>{location.hash="pl"};$("tabEx").onclick=()=>{location.hash="ex"};
+addEventListener("hashchange",()=>{route();tabsUI()});
 stat();route();
 </script>
 </body>

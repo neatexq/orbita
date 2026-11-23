@@ -133,6 +133,7 @@ canvas{position:fixed;inset:0;display:block;image-rendering:pixelated}
 #end h2{font-family:"Press Start 2P";font-size:11px;color:var(--hot);letter-spacing:2px}
 #end .alt{font-family:"Press Start 2P";font-size:clamp(30px,8vw,52px);color:#fff;margin:14px 0 6px;text-shadow:3px 0 var(--hot),-3px 0 var(--cy)}
 #end .lm{font-size:12px;color:var(--cy)}
+#end .dsum{font-size:12px;color:var(--gold);margin-top:10px;line-height:1.6;animation:rise .6s cubic-bezier(.2,1.3,.4,1) both}
 #end .grid{font-size:22px;letter-spacing:4px;margin:12px 0}
 #end table{width:100%;border-collapse:collapse;margin-top:6px}
 #end td{padding:7px 4px;border-bottom:1px dashed #1f4670;font-size:12px;vertical-align:top}
@@ -636,9 +637,12 @@ function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):G.mode=
 // в лог пишем каноническое название; p — «процент» ответа, ai — засчитан проверкой ИИ
 function save(done){const k=storeKey();if(!k)return;const log=G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts,...(l.hit?{p:l.hit.pct}:{}),...(l.hit&&l.hit.ai?{ai:1}:{})}));store.set(k,{...(store.get(k)||{}),i:G.i,score:G.score,log,done});if(G.mode==="duel")duelPush(G.duel.code,G.duel.token,log.length,G.score,log,done)}
 // старые сохранения без p тоже читаются: уровень восстанавливаем по очкам, если список ещё не загружен или поменялся
+// p — процент с учётом игроков на момент ответа, поэтому очки восстанавливаются те же
 function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];let hit=null;
   if(l.label){const f=!l.free&&q&&q.map.get(norm(l.label));
-    hit=f&&tierOf(f).p===l.pts?f:{...mkFree(l.label),free:!!l.free,ai:!!l.ai,pct:l.p!=null&&tierOf({pct:l.p}).p===l.pts?l.p:(PCT_OF[l.pts]??0),clever:l.pts===15}}
+    const base=f||{...mkFree(l.label),free:!!l.free,ai:!!l.ai};
+    hit={...base,...(f?{base:f}:{}),pct:l.p!=null?l.p:base.pct};
+    if(tierOf(hit).p!==l.pts)hit={...hit,pct:PCT_OF[l.pts]??0,clever:l.pts===15}}
   return{qid:l.qid,raw:l.raw,hit,pts:l.pts}})}
 
 function startGame(mode,opt={}){
@@ -683,6 +687,8 @@ function showQ(){
   $("ans").value="";$("ans").disabled=false;show("bar",true);setRing(1,25);
   setTimeout(()=>$("ans").focus(),50);
   G.locked=false;G.clockOn=false;G.checking=false;G.clockPending=false;
+  // статистику игроков берём, пока печатается вопрос; очки считаем по этому снимку (не успела — играем по спискам)
+  G.st=null;{const g=G,gi=G.i;getStats(q).then(s=>{if(s&&G===g&&g.i===gi&&!g.locked)g.st={i:gi,s}})}
   countT.forEach(clearTimeout);countT=[];
   [3,2,1].forEach((n,i)=>countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent=n;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");show("count",true);SFX.beep()},i*700+200)));
   countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent="ПОЕХАЛИ!";c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");SFX.go();if(G.checking)G.clockPending=true;else startClock()},2300));
@@ -725,14 +731,39 @@ async function aiAsk(q,raw){
   const label=String(d.label||raw).trim().slice(0,60)||raw;
   return{...mkFree(label),keys:[norm(raw)],pct:AI_PCT[d.rarity]??1,ai:true,src:"ai"};
 }
+/* ===== статистика игроков: что отвечают на самом деле ===== */
+// случайный id игрока — только чтобы сервер считал один ответ на вопрос в день
+function pid(){let p=store.get("orb-pid");if(!/^[0-9a-f]{32}$/.test(p||"")){p=Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");store.set("orb-pid",p)}return p}
+function apiPost(path,body){return fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),keepalive:true})}
+const modeName=()=>G.mode==="daily"?(G.day===TODAY?"daily":"archive"):G.mode;
+// отправили и забыли: игра не ждёт и не замечает ошибок
+function sendAns(q,hit){try{apiPost("/answer",{pid:pid(),qid:q.id,q:q.q,label:hit?hit.label.slice(0,60):null,mode:modeName(),...(G.mode==="daily"?{day:G.day}:{})}).catch(()=>{})}catch(e){}}
+// {total, top:[[label,n]]} или null; ждём не дольше 4 с
+function getStats(q){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),4000);
+  return fetch(`${API}/stats?q=${q.id}`,{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(d=>d&&Number.isInteger(d.total)&&Array.isArray(d.top)?mkStat(q,d):null).catch(()=>null).finally(()=>clearTimeout(t));
+}
+// счётчики раскладываем по ответам вопроса (синонимы сходятся в один ответ)
+function mkStat(q,d){const obj=new Map(),lab=new Map(),extra=[];
+  for(const[label,n]of d.top){if(typeof label!=="string"||!(n>0))continue;const k=norm(label);if(!k||q.del.has(k))continue;lab.set(k,(lab.get(k)||0)+n);const a=q.map.get(k);if(a)obj.set(a,(obj.get(a)||0)+n);else extra.push({label,n,k})}
+  return{total:d.total,obj,lab,extra}}
+// сколько игроков дали этот ответ
+function cntOf(st,a){if(!st||!a)return 0;const b=a.base||a;return st.obj.get(b)??st.lab.get(norm(a.label))??0}
+// процент = смесь процента из списка и доли игроков; K «виртуальных игроков» не дают горстке людей перевернуть очки
+const BLEND_K=40,REAL_MIN=20;
+const blend=(prior,n,st)=>st&&st.total>0?(prior/100*BLEND_K+n)/(BLEND_K+st.total)*100:prior;
+function scored(hit,st){if(!hit||!st||!st.total)return hit;const b=hit.base||hit;return{...b,base:b,pct:blend(b.pct,cntOf(st,b),st)}}
+const fmtPct=p=>p>=1||p<=0?String(Math.round(p)):"<1";
 function timeUp(){if(G.locked)return;commit("",null)}
 function commit(raw,hit){
   G.locked=true;stopClock();$("ans").disabled=true;
+  const q=Qs[G.qs[G.i]],st=G.st&&G.st.i===G.i?G.st.s:null;G.stNow=st;
+  sendAns(q,hit);
+  const h0=hit;hit=scored(hit,st);
   const T=tierOf(hit),pts=T.p;const from=G.score;
   G.log[G.i]={qid:G.qs[G.i],raw,hit,pts};G.score+=pts;save(false);
   if(corrected(raw,hit))toast(`ЗАСЧИТАНО КАК «${hit.label.toUpperCase()}»`);
-  const q=Qs[G.qs[G.i]];
-  if(hit&&!store.get("orb-egg2")&&hit.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg2",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
+  if(h0&&!store.get("orb-egg2")&&h0.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg2",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
   launchPart(raw,hit,T,pts,from);
 }
 // один раз на игрока: 3 фото по 2 секунды, звук полностью выключен
@@ -760,14 +791,23 @@ function reveal(T,raw,hit,from){
   if(T.p>0){burst(T.c,40+T.p);SFX.tier(T.p);animNum($("scoreV"),from,G.score,"",700)}
   if(T.p>=85){flash(.7);bodyShake("shake2")}else if(T.p>=60){flash(.35);bodyShake("shake")}
   setHud();
-  const top=q.a.slice().sort((a,b)=>b.pct-a.pct).slice(0,5);if(hit&&!top.includes(hit))top.push(hit);
+  // столбики: проценты из списков, смешанные с ответами игроков, + ответы игроков, которых нет в списках (засчитанные ИИ)
+  const st=G.stNow,hb=hit&&(hit.base||hit);
+  const cand=q.a.map(a=>({a,label:a.label,pct:blend(a.pct,cntOf(st,a),st)}));
+  if(st)for(const x of st.extra)cand.push({a:null,label:x.label,pct:blend(0,x.n,st)});
+  const isMe=c=>!!hit&&(c.a?c.a===hb:norm(c.label)===norm(hit.label));
+  const top=cand.sort((a,b)=>b.pct-a.pct).slice(0,5);if(hit&&!top.some(isMe))top.push({a:hb,label:hit.label,pct:hit.pct});
   const max=top[0].pct||1;
+  // «так ответили N% игроков» — когда игроков уже достаточно; сам игрок тоже считается
+  let said="";if(hit){const n=cntOf(st,hit);
+    if(st&&st.total>=REAL_MIN)said=(hit.ai?"проверено ИИ · ":"")+(n?`так ответили ${fmtPct((n+1)/(st.total+1)*100)}% игроков`:`из ${st.total} игроков так не ответил никто`);
+    else said=hit.ai?"проверено ИИ — такое действительно есть":hit.pct?`так ответили ~${fmtPct(hit.pct)}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}
   const r=$("res"),endless=G.mode==="endless";if(endless&&!hit)G.over=true;
   r.innerHTML=`<div class="tn rise ${T.p===100?"rainbow":""}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 20px ${T.c}88,0 3px 0 #000`}">${T.n}</div>
    <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>${corrected(raw,hit)?`<div class="fix rise" style="animation-delay:.15s">засчитано как «${esc(hit.label)}»</div>`:""}
    <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+${T.p} ОЧК · ${T.p?"+"+T.p+" КМ ВВЕРХ":"НА МЕСТЕ"}</div>
-   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${hit.ai?"проверено ИИ — такое действительно есть":hit.pct?`так ответили ~${hit.pct}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
-   <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${a===hit?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="lb">${esc(a.label)}</div></div><div class="pc">${a.pct}%</div></div>`).join("")}</div>
+   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${said}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
+   <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${isMe(a)?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="lb">${esc(a.label)}</div></div><div class="pc">${fmtPct(a.pct)}%</div></div>`).join("")}</div>
    <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">ЗАКОНЧИТЬ ■</button>`:""}</div>`;
   show("res",true);
   setTimeout(()=>r.querySelectorAll(".fl").forEach(f=>f.style.width=f.dataset.w+"%"),600);
@@ -783,7 +823,7 @@ function finish(already){
   const grid=G.log.map(l=>tierOf(l.hit).e).join("");
   G.share=`ОРБИТА · ${G.title}\n▲ ${alt} км — ${lm}\n${grid}`;
   const e=$("end");
-  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
+  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div id="dSum"></div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>
    <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw)+(corrected(l.raw,l.hit)?` → ${esc(l.hit.label)}`:""):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
    <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} БЕСКОНЕЧНО</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ЕЩЁ ЗАПУСК</button>`}</div>
    <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>
@@ -795,6 +835,23 @@ function finish(already){
   if($("againBtn"))$("againBtn").onclick=()=>startGame(G.mode,{cat:G.cat});
   $("homeBtn").onclick=goHome;
   tickNext();
+  if(G.mode==="daily"&&G.day===TODAY)dailySummary(G);
+}
+// итог дня: счёт уходит на сервер (засчитывается первый), в ответ — место среди игроков и самый редкий ответ дня
+function dailySummary(g){
+  const plural=(n,a,b,c)=>{const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c};
+  apiPost("/daily",{pid:pid(),day:g.day,score:g.score,qs:g.qs}).then(r=>r.ok?r.json():null).then(d=>{
+    const el=$("dSum");if(!d||!el||G!==g)return;const lines=[];
+    const others=(d.players|0)-1;
+    if(others>=3)lines.push(`ты улетел выше ${Math.round((d.below|0)/others*100)}% игроков сегодня`);
+    else if(others>0)lines.push(`сегодня летали ${d.players} ${plural(d.players,"пилот","пилота","пилотов")} — ты среди первых`);
+    // самый редкий: меньше всего выборов, при равенстве — самый редкий по спискам; только настоящие ответы
+    let best=null;for(const r of d.rare||[]){if(!Array.isArray(r))continue;const[qid,label,n]=r,q=Qs[qid];if(!q||typeof label!=="string"||!(n>0))continue;
+      const k=norm(label);if(!k||q.del.has(k))continue;const a=q.map.get(k),pr=a?a.pct:0;
+      if(!best||n<best.n||(n===best.n&&pr<best.pr))best={q,label:a?a.label:label,n,pr}}
+    if(best)lines.push(`самый редкий ответ дня: «${esc(best.label)}» (${esc(best.q.q.toLowerCase())}) — ${best.n===1?"всего один раз":best.n+" "+plural(best.n,"раз","раза","раз")}`);
+    if(lines.length)el.innerHTML=`<div class="dsum">${lines.map(l=>`<div>▲ ${l}</div>`).join("")}</div>`;
+  }).catch(()=>{});
 }
 function tickNext(){const el=$("nextT");if(!el)return;const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const s=Math.floor((m-n)/1000);el.textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(v=>String(v).padStart(2,"0")).join(":");setTimeout(tickNext,1000)}
 function confetti(){const cols=["#ff4fd8","#ffd54a","#5ef38c","#5ff3ff","#c77dff"];let k=0;const iv=setInterval(()=>{for(let i=0;i<20;i++)spawn({x:rand(0,W),alt:world.cam+(H*world.anchor+10)/world.px,vx:rand(-60,60),vy:-rand(80,220),life:rand(2,3.5),ml:3.5,sz:rand(3,6),c:"spark",col:cols[i%5]});if(++k>25)clearInterval(iv)},80)}
