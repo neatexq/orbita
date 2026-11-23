@@ -120,7 +120,7 @@ canvas{position:fixed;inset:0;display:block;width:100%;height:100%;image-renderi
 .b .tr{position:relative;height:20px;background:#081428;overflow:hidden}
 .b .fl{position:absolute;inset:0 auto 0 0;width:0;background:#1d4a7a;transition:width .9s cubic-bezier(.2,.9,.3,1)}
 .b.me .fl{background:linear-gradient(90deg,var(--hot),#ff9ac0)}
-.b .lb{position:relative;padding:0 8px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b .bl{position:relative;padding:0 8px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b .pc{text-align:right;color:var(--muted);font-size:11px}
 #res .btn{margin-top:18px;min-width:220px}
 .rise{animation:rise .7s cubic-bezier(.2,1.3,.4,1) both}
@@ -885,7 +885,7 @@ function reveal(T,raw,hit,from){
    <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>${corrected(raw,hit)?`<div class="fix rise" style="animation-delay:.15s">засчитано как «${esc(hit.label)}»</div>`:""}
    <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+${T.p} ОЧК · ${T.p?"+"+T.p+" КМ ВВЕРХ":"НА МЕСТЕ"}</div>
    <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${said}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
-   <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${isMe(a)?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="lb">${esc(a.label)}</div></div><div class="pc">${fmtPct(a.pct)}%</div></div>`).join("")}</div>
+   <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${isMe(a)?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="bl">${esc(a.label)}</div></div><div class="pc">${fmtPct(a.pct)}%</div></div>`).join("")}</div>
    <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">ЗАКОНЧИТЬ ■</button>`:""}</div>`;
   show("res",true);
   setTimeout(()=>r.querySelectorAll(".fl").forEach(f=>f.style.width=f.dataset.w+"%"),600);
