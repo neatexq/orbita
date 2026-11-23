@@ -12,7 +12,7 @@
 // GET  /api/health
 //
 // Настройки — переменные окружения (файл /etc/orbita/env): LLM_KEY, ADMIN_TOKEN,
-// необязательно LLM_URL, LLM_MODEL, LLM_MAX_TOKENS, PORT, DB, ALLOWED_ORIGINS.
+// необязательно LLM_URL, LLM_MODELS (через запятую), PORT, DB, ALLOWED_ORIGINS.
 
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -24,8 +24,9 @@ const env = process.env;
 const PORT = Number(env.PORT) || 8790;
 const DB_PATH = env.DB || '/var/lib/orbita/orbita.db';
 const LLM_URL = env.LLM_URL || 'https://api.groq.com/openai/v1/chat/completions';
-const LLM_MODEL = env.LLM_MODEL || 'llama-3.3-70b-versatile';
-const LLM_MAX_TOKENS = Number(env.LLM_MAX_TOKENS) || 80;
+// Две модели проверяют параллельно, засчитываем, если «да» сказала хоть одна:
+// по отдельности одна слишком строгая, другая не знает части имён, вместе — 18/18 на тестовом наборе.
+const LLM_MODELS = (env.LLM_MODELS || 'qwen/qwen3.8-27b,openai/gpt-oss-120b').split(',').map((s) => s.trim()).filter(Boolean);
 const LLM_TIMEOUT_MS = 6000;
 const ORIGINS = (env.ALLOWED_ORIGINS || 'https://orbita.129-151-216-221.sslip.io,https://neatexq.github.io,http://localhost:8765,http://127.0.0.1:8765')
   .split(',').map((s) => s.trim()).filter(Boolean);
@@ -96,18 +97,31 @@ If ok=true: "label" is the canonical Russian name of exactly that thing (nominat
 Reply with ONLY a JSON object and nothing else:
 {"ok":true,"label":"...","rarity":1}  or  {"ok":false,"label":"","rarity":0}`;
 
-async function askLlm(q, a) {
+async function askLlm(model, q, a) {
   if (!env.LLM_KEY) throw new Error('no key');
+  const reasoning = /gpt-oss/.test(model);
   const r = await fetch(LLM_URL, {
     method: 'POST', signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.LLM_KEY}` },
     body: JSON.stringify({
-      model: LLM_MODEL, temperature: 0, max_tokens: LLM_MAX_TOKENS, response_format: { type: 'json_object' },
+      model, temperature: 0, max_tokens: reasoning ? 600 : 150, response_format: { type: 'json_object' },
+      ...(reasoning ? { reasoning_effort: 'low' } : {}),
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify({ prompt: q, answer: a }) }],
     }),
   });
   if (!r.ok) throw new Error('llm http ' + r.status);
   return (await r.json())?.choices?.[0]?.message?.content;
+}
+// Опрос всех моделей. null — ни одна не дала разборчивого ответа (не кэшируем).
+async function judgeAll(q, a) {
+  const res = await Promise.allSettled(LLM_MODELS.map((m) => askLlm(m, q, a)));
+  const vs = res.filter((x) => x.status === 'fulfilled').map((x) => parseVerdict(x.value)).filter(Boolean);
+  if (!vs.length) return res.every((x) => x.status === 'rejected') ? undefined : null;
+  const oks = vs.filter((v) => v.ok);
+  if (!oks.length) return { ok: false, label: '', rarity: 0 };
+  const best = oks.find((v) => labelIsClose(a, v.label)) || oks[0];
+  const rarity = Math.round(oks.reduce((t, v) => t + v.rarity, 0) / oks.length);
+  return { ok: true, label: best.label, rarity };
 }
 function parseVerdict(content) {
   let v; try { v = JSON.parse(content); } catch { return null; }
@@ -136,8 +150,8 @@ async function check(body, ip) {
   let p = inflight.get(key);
   if (!p) {
     p = (async () => {
-      let v;
-      try { v = parseVerdict(await askLlm(q, a)); } catch { return [503, { ok: false, error: 'llm' }]; }
+      const v = await judgeAll(q, a);
+      if (v === undefined) return [503, { ok: false, error: 'llm' }];
       if (!v) return [200, { ok: false, cached: false, error: 'llm_format' }];
       if (v.ok && !labelIsClose(a, v.label)) v.label = a;
       qPutV.run(key, q, a, v.ok ? 1 : 0, v.label, v.rarity, Date.now(), 0);
