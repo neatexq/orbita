@@ -12,6 +12,16 @@ if(location.hash.indexOf("#mig=")===0){var d=JSON.parse(decodeURIComponent(locat
 </script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Орбита · ежедневный запуск</title>
+<script>
+// язык: ?lang=ru|en → сохранённый выбор → есть старые сохранения (значит, русский) → язык браузера; выбор запоминаем
+(function(){var l=null,ls=null;try{ls=window.localStorage}catch(e){}
+try{var u=(new URLSearchParams(location.search).get("lang")||"").toLowerCase();if(u==="ru"||u==="en")l=u}catch(e){}
+if(!l)try{var s=JSON.parse(ls.getItem("orb-lang"));if(s==="ru"||s==="en")l=s}catch(e){}
+if(!l)try{for(var i=0;i<ls.length;i++)if(/^orb-(pid|d-|du-|nick|endless)/.test(ls.key(i))){l="ru";break}}catch(e){}
+if(!l)l=/^ru/i.test(navigator.language||"")?"ru":"en";
+try{ls.setItem("orb-lang",JSON.stringify(l))}catch(e){}
+window.ORB_LANG=l;document.documentElement.lang=l;if(l==="en"){document.documentElement.classList.add("i18n");document.title="Orbit · daily launch"}})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -39,6 +49,12 @@ canvas{position:fixed;inset:0;display:block;width:100%;height:100%;image-renderi
 @keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.08,1.4)}}
 
 /* верхние кнопки */
+.i18n [data-i]{visibility:hidden}
+#langSw{display:flex;gap:6px;margin-top:14px;pointer-events:auto}
+#langSw button,.langRow button{font-family:"Press Start 2P";font-size:9px;letter-spacing:1px;padding:7px 10px;color:#bcd8ef;background:rgba(2,6,20,.55);border:2px solid var(--line);box-shadow:0 0 0 2px #000;cursor:pointer}
+#langSw button.on,.langRow button.on{color:#fff;border-color:var(--cy);box-shadow:0 0 0 2px #000,0 0 12px rgba(95,243,255,.45)}
+.langRow{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px;font-family:"Press Start 2P";font-size:9px;color:#bcd8ef}
+.langRow div{display:flex;gap:6px}
 #topBtns{position:fixed;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;z-index:20}
 #topBtns .btn{pointer-events:auto;width:40px;height:40px;padding:0;font-size:14px}
 
@@ -523,20 +539,21 @@ body.urgent::after{animation:urgent 1s ease-in-out infinite}
 <canvas id="cv"></canvas>
 <div id="scan"></div><div id="vignette"></div><div id="flash"></div>
 
-<div id="topBtns"><button class="btn small" id="menuBtn" title="Меню"></button><button class="btn small" id="sndBtn" title="Звук"></button></div>
+<div id="topBtns"><button class="btn small" id="menuBtn" title="Меню" data-it></button><button class="btn small" id="sndBtn" title="Звук" data-it></button></div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
-  <div class="hbox" id="hAlt"><small>ВЫСОТА</small><b id="altV">0 км</b></div>
-  <div id="pips"><div class="row" id="pipRow"></div><span id="pipTxt">ВОПРОС 1 ИЗ 7</span></div>
-  <div class="hbox" id="hScore"><small id="hScoreL">СЧЁТ</small><b id="scoreV">0</b></div>
+  <div class="hbox" id="hAlt"><small data-i>ВЫСОТА</small><b id="altV" data-i>0 км</b></div>
+  <div id="pips"><div class="row" id="pipRow"></div><span id="pipTxt" data-i>ВОПРОС 1 ИЗ 7</span></div>
+  <div class="hbox" id="hScore"><small id="hScoreL" data-i>СЧЁТ</small><b id="scoreV">0</b></div>
 </div>
 
 <!-- главная -->
 <div id="home" class="layer">
-  <div class="title">ОРБИТА</div>
-  <div class="tag" id="homeTag">ЕЖЕДНЕВНЫЙ ЗАПУСК</div>
-  <div class="sub">7 вопросов · 25 секунд · редкие ответы летят выше</div>
+  <div class="title" data-i>ОРБИТА</div>
+  <div class="tag" id="homeTag" data-i>ЕЖЕДНЕВНЫЙ ЗАПУСК</div>
+  <div class="sub" data-i>7 вопросов · 25 секунд · редкие ответы летят выше</div>
+  <div id="langSw"><button type="button" data-lang="ru">RU</button><button type="button" data-lang="en">EN</button></div>
   <div id="homeBottom">
     <button id="howLink">▲ КАК ИГРАТЬ</button>
     <button class="btn big" id="startBtn">▲ НАЧАТЬ ЗАПУСК ▲</button>
@@ -553,14 +570,14 @@ body.urgent::after{animation:urgent 1s ease-in-out infinite}
 </div>
 
 <!-- игра -->
-<div id="opp" class="hbox hidden"><small id="oppN">СОПЕРНИК</small><b id="oppV">—</b></div>
-<div id="pcard" class="hidden"><div class="qn" id="qn"></div><div class="qt" id="qt"></div><div class="qh" id="qh">▲ редкие ответы летят выше ▲</div></div>
+<div id="opp" class="hbox hidden"><small id="oppN" data-i>СОПЕРНИК</small><b id="oppV">—</b></div>
+<div id="pcard" class="hidden"><div class="qn" id="qn"></div><div class="qt" id="qt"></div><div class="qh" id="qh" data-i>▲ редкие ответы летят выше ▲</div></div>
 <div id="count" class="hidden"></div>
 <div id="err"></div>
 <form id="bar" class="hidden" autocomplete="off">
   <div id="ring"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="26"/><circle class="fg" id="ringFg" cx="30" cy="30" r="26"/><circle class="tk" cx="30" cy="30" r="26"/></svg><span id="ringT">25</span></div>
-  <input id="ans" placeholder="один ответ…" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
-  <button class="btn hot" id="go" type="submit">ПУСК</button>
+  <input id="ans" placeholder="один ответ…" data-ip maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <button class="btn hot" id="go" type="submit" data-i>ПУСК</button>
 </form>
 <div id="res" class="hidden"></div>
 <div id="end" class="hidden"></div>
@@ -568,21 +585,120 @@ body.urgent::after{animation:urgent 1s ease-in-out infinite}
 <div id="toast"></div>
 <div id="egg" style="display:none;position:fixed;inset:0;z-index:999;background:#000"><img src="art/p1.png" alt="" style="display:none;width:100%;height:100%;object-fit:fill"><img src="art/p2.png" alt="" style="display:none;width:100%;height:100%;object-fit:fill"><img src="art/p3.png" alt="" style="display:none;width:100%;height:100%;object-fit:fill"></div>
 
-<script src="data/q1.js"></script>
-<script src="data/q2.js"></script>
-<script src="data/q3.js"></script>
-<script src="data/q4.js"></script>
-<script src="data/q5.js"></script>
-<script src="data/m1.js"></script>
-<script src="data/m2.js"></script>
-<script src="data/wd/index.js"></script>
-<script src="data/overrides.js"></script>
+<script>
+// грузим вопросы только активного языка (номера вопросов в обоих языках совпадают 1:1)
+(window.ORB_LANG==="en"?["data/en/q1.js","data/en/q2.js"]:["data/q1.js","data/q2.js","data/q3.js","data/q4.js","data/q5.js","data/m1.js","data/m2.js","data/wd/index.js","data/overrides.js"])
+ .forEach(function(f){document.write('<script src="'+f+'"><\/script>')});
+</script>
 <script>
 "use strict";
 /* =================== ДАННЫЕ =================== */
 // Вопросы лежат в data/*.js. Формат одного вопроса:
 // ["тема","Вопрос","популярные с процентами: ответ/синоним 25, хитрый 4!","редкие (1%): а, б/синоним","уникальные (0%): в, г"]
-const CATS={eda:"Еда и напитки",zve:"Животные",pri:"Природа",mir:"Вокруг света",kul:"Культура",spo:"Спорт и игры",byt:"Дом и быт",lyu:"Люди",tex:"Наука и техника",raz:"Разное"};
+/* =================== ЯЗЫК =================== */
+// Все строки интерфейса пишутся по-русски и проходят через tl(); английский перевод — в одном словаре I18N_EN (ключ — русская строка).
+// {n} в строке — подстановка: tl("ВОПРОС {n}",{n:3}). Массив в словаре — формы для plural(): [одна, много].
+const LANG=window.ORB_LANG==="en"?"en":"ru",EN=LANG==="en",LOC=EN?"en-US":"ru-RU";
+const I18N_EN={
+ // разметка
+ "Меню":"Menu","Звук":"Sound","ВЫСОТА":"ALTITUDE","0 км":"0 km","ВОПРОС 1 ИЗ 7":"QUESTION 1 OF 7","СЧЁТ":"SCORE","ОРБИТА":"ORBIT",
+ "ЕЖЕДНЕВНЫЙ ЗАПУСК":"DAILY LAUNCH","7 вопросов · 25 секунд · редкие ответы летят выше":"7 questions · 25 seconds · rare answers fly higher",
+ "СОПЕРНИК":"OPPONENT","▲ редкие ответы летят выше ▲":"▲ rare answers fly higher ▲","один ответ…":"one answer…","ПУСК":"LAUNCH","ЯЗЫК":"LANGUAGE",
+ // уровни
+ "МИМО ОРБИТЫ":"MISSED ORBIT","Двигатель так и не запустился.":"The engine never fired.",
+ "ВОЗДУШНЫЙ ШАР":"HOT-AIR BALLOON","Ответ, который выкрикивает каждый.":"The answer everyone shouts.",
+ "СЛИШКОМ ХИТРО":"TOO CLEVER","Казалось оригинальным? Полстраны подумало так же.":"Felt original? Half the country thought the same.",
+ "В СТРОЮ":"IN FORMATION","Надёжно — летишь вместе со всей эскадрильей.":"Solid — you're flying with the whole squadron.",
+ "РЕДКОСТЬ":"RARE FIND","Мало кто до этого додумался.":"Few people thought of that.",
+ "ДАЛЬНИЙ КОСМОС":"DEEP SPACE","Почти никто так не ответил.":"Almost nobody said that.",
+ "ОДИН НА МИЛЛИОН":"ONE IN A MILLION","Так не ответил никто. Вообще.":"Nobody said that. Nobody at all.",
+ // главная и меню
+ "АРХИВ":"ARCHIVE","НАБОРЫ":"PACKS","БЕСКОНЕЧНО":"ENDLESS","ДУЭЛЬ":"DUEL","КОМНАТА":"ROOM","РЕЙТИНГ":"RANKING","КАК ИГРАТЬ":"HOW TO PLAY",
+ "ЗАПУСК #{n}":"LAUNCH #{n}","▲ МОЙ РЕЗУЛЬТАТ: {s} КМ ▲":"▲ MY RESULT: {s} KM ▲","▲ ПРОДОЛЖИТЬ ЗАПУСК ▲":"▲ CONTINUE LAUNCH ▲","▲ НАЧАТЬ ЗАПУСК ▲":"▲ START LAUNCH ▲",
+ "СЕРИЯ: {n}":"STREAK: {n}","МЕНЮ":"MENU","ЗАПУСК ДНЯ":"DAILY LAUNCH","РЕЙТИНГ ДНЯ":"DAILY RANKING","ТЕМАТИЧЕСКИЕ НАБОРЫ":"THEMED PACKS",
+ "БЕСКОНЕЧНЫЙ РЕЖИМ":"ENDLESS MODE","ДУЭЛЬ С ДРУГОМ":"DUEL A FRIEND","КОМНАТА ДЛЯ КОМПАНИИ":"PARTY ROOM","до 30":"up to 30","НА ГЛАВНУЮ":"HOME",
+ "ПОНЯТНО":"GOT IT","7 ВОПРОСОВ В ДЕНЬ. ОДИНАКОВЫЕ ДЛЯ ВСЕХ.":"7 QUESTIONS A DAY. THE SAME FOR EVERYONE.",
+ "25 СЕКУНД, ЧТОБЫ НАЗВАТЬ ЧТО-ТО ОДНО.":"25 SECONDS TO NAME ONE THING.","РЕДКИЕ ОТВЕТЫ — МНОГО ОЧКОВ. ОЧЕВИДНЫЕ НИКУДА НЕ ЛЕТЯТ.":"RARE ANSWERS SCORE BIG. OBVIOUS ONES GO NOWHERE.",
+ "ХИТРЫЙ ОТВЕТ? ЭСКАДРИЛЬЯ ТОЖЕ О НЁМ ПОДУМАЛА.":"A CLEVER ANSWER? THE SQUADRON THOUGHT OF IT TOO.","КАЖДОЕ ОЧКО — +1 КМ ВЫСОТЫ. 700 — ОРБИТА.":"EVERY POINT IS +1 KM OF ALTITUDE. 700 IS ORBIT.",
+ "ОДИН ЗАПУСК В ДЕНЬ. БЕЗ ВТОРОГО ШАНСА.":"ONE LAUNCH A DAY. NO SECOND CHANCES.",
+ "АРХИВ ЗАПУСКОВ":"LAUNCH ARCHIVE"," · СЕГОДНЯ":" · TODAY","не закончен":"not finished","не сыгран":"not played"," вопросов":" questions","ЗАКРЫТЬ":"CLOSE",
+ // игра
+ "ВОПРОС {n} · ∞":"QUESTION {n} · ∞","ВОПРОС {n} ИЗ {m}":"QUESTION {n} OF {m}","ВОПРОС":"QUESTION"," ИЗ 7":" OF 7","БЕСКОНЕЧНЫЙ #{n}":"ENDLESS #{n}","ДУЭЛЬ {c}":"DUEL {c}",
+ "Продолжаем дуэль — второго шанса нет":"Resuming the duel — no second chances","Продолжаем запуск — второго шанса нет":"Resuming the launch — no second chances",
+ " км":" km","км":"km"," КМ":" KM","ПОЕХАЛИ!":"LIFTOFF!","«{a}» — не засчитано. Ещё вариант!":"“{a}” doesn't count. Try another!","ПРОВЕРЯЮ…":"CHECKING…",
+ "ЗАСЧИТАНО КАК {a}":"COUNTED AS {a}","засчитано как {a}":"counted as {a}","проверено ИИ · ":"checked by AI · ","проверено ИИ":"checked by AI",
+ "так ответили {p}% игроков":"{p}% of players said this","из {n} игроков так не ответил никто":"none of {n} players said this",
+ "проверено ИИ — такое действительно есть":"checked by AI — it's real","так ответили ~{p}%":"~{p}% said this",
+ "уникальный ответ — такого нет ни у кого":"unique answer — nobody else has it","ни одного совпадения":"no matches",
+ "ВРЕМЯ ВЫШЛО":"TIME'S UP","ОЧК":"PTS"," КМ ВВЕРХ":" KM UP","НА МЕСТЕ":"GOING NOWHERE","ПОЛЁТ ОКОНЧЕН":"FLIGHT OVER","ЧАЩЕ ВСЕГО ОТВЕЧАЮТ":"TOP ANSWERS",
+ "ИТОГИ ▲":"RESULTS ▲","ДАЛЬШЕ ▲":"NEXT ▲","ЗАКОНЧИТЬ ▼":"FINISH ▼","ЗАПУСК ЗАВЕРШЁН":"LAUNCH COMPLETE","на стартовой площадке":"on the launch pad",
+ "ЗАВЕРШЁН":"COMPLETE","— время вышло":"— time's up","ПОДЕЛИТЬСЯ":"SHARE","ЕЩЁ ЗАПУСК":"LAUNCH AGAIN","СЛЕДУЮЩИЙ ЗАПУСК ЧЕРЕЗ":"NEXT LAUNCH IN",
+ "ты улетел выше {p}% игроков сегодня":"you flew higher than {p}% of players today","сегодня летали {n} {w} — ты среди первых":"{n} {w} flew today — you're one of the first",
+ "пилот":["pilot","pilots"],"ПИЛОТ":["PILOT","PILOTS"],"раз":["time","times"],"всего один раз":"just once",
+ "самый редкий ответ дня: {a} ({q}) — {n}":"rarest answer of the day: {a} ({q}) — {n}",
+ // карточка и «поделиться»
+ "ещё на стартовой площадке":"still on the launch pad","А ТЫ УЛЕТИШЬ ВЫШЕ?":"CAN YOU FLY HIGHER?","РИСУЕМ КАРТОЧКУ…":"DRAWING YOUR CARD…","ОТПРАВИТЬ":"SEND",
+ "СКАЧАТЬ":"DOWNLOAD","КОПИРОВАТЬ КАРТИНКУ":"COPY IMAGE","В TELEGRAM":"TELEGRAM","КОПИРОВАТЬ ТЕКСТ":"COPY TEXT","НЕ ПОЛУЧИЛОСЬ НАРИСОВАТЬ":"COULDN'T DRAW THE CARD",
+ "карточка результата":"result card","НЕ ВЫШЛО ОТПРАВИТЬ":"COULDN'T SEND","КАРТИНКА СКОПИРОВАНА!":"IMAGE COPIED!","НЕ УДАЛОСЬ СКОПИРОВАТЬ":"COULDN'T COPY","СКОПИРОВАНО!":"COPIED!",
+ // дуэль
+ "ЕЩЁ НЕ ЗАШЁЛ":"NOT JOINED YET","ФИНИШ":"FINISHED","ТВОЙ НИК":"YOUR NICKNAME","например, Гагарин":"e.g. Armstrong","ВВЕДИ НИК":"ENTER A NICKNAME",
+ "не закончена":"not finished","не сыграна":"not played","ОДИНАКОВЫЕ 7 ВОПРОСОВ ДЛЯ ДВОИХ.":"THE SAME 7 QUESTIONS FOR BOTH OF YOU.",
+ "ИГРАЙТЕ ВМЕСТЕ ИЛИ ПО ОЧЕРЕДИ — ССЫЛКА ПОКАЖЕТ ИТОГ.":"PLAY TOGETHER OR TAKE TURNS — THE LINK SHOWS THE RESULT.","КТО УЛЕТЕЛ ВЫШЕ — ТОТ ПОБЕДИЛ.":"WHOEVER FLIES HIGHER WINS.",
+ "СОЗДАТЬ ДУЭЛЬ":"CREATE DUEL","ИЛИ ВВЕДИ КОД ДРУГА":"OR ENTER A FRIEND'S CODE","КОД":"CODE","ВОЙТИ":"JOIN","МОИ ДУЭЛИ":"MY DUELS","КОД — 5 СИМВОЛОВ":"THE CODE IS 5 CHARACTERS",
+ "НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ":"NO CONNECTION — TRY AGAIN","ДУЭЛЬ СОЗДАНА":"DUEL CREATED","отправь другу код или ссылку":"send your friend the code or link",
+ "КОПИРОВАТЬ":"COPY","ИГРАТЬ":"PLAY","Дуэль в «Орбите»! Кто улетит выше? Код {c}":"An Orbit duel! Who will fly higher? Code {c}","ДУЭЛЬ НЕ НАЙДЕНА":"DUEL NOT FOUND",
+ "В ДУЭЛИ УЖЕ ДВОЕ":"THIS DUEL ALREADY HAS TWO PLAYERS","ВЫЗОВ НА ДУЭЛЬ":"DUEL CHALLENGE","{n} вызывает тебя":"{n} challenges you"," — уже улетел(а) на {s}":" — already flew {s}",
+ "ПОТОМ":"LATER","ПРИНЯТЬ":"ACCEPT","СВЯЗЬ С ЦУПОМ…":"CONTACTING MISSION CONTROL…","ДУЭЛЬ ЕЩЁ ИДЁТ":"DUEL IN PROGRESS","ЖДЁМ СОПЕРНИКА":"WAITING FOR OPPONENT",
+ "{n} ЕЩЁ ЛЕТИТ · {s}/7":"{n} IS STILL FLYING · {s}/7","отправь другу ссылку — результат появится здесь":"send your friend the link — the result will appear here",
+ "результат обновится сам":"the result updates automatically","НИЧЬЯ!":"DRAW!","ПОБЕДИЛ(А) {n}":"{n} WINS","ПОБЕДА!":"VICTORY!","ПОРАЖЕНИЕ":"DEFEAT"," · ТЫ":" · YOU",
+ "скрыто до финиша":"hidden until finish","ССЫЛКА":"LINK","НОВАЯ ДУЭЛЬ":"NEW DUEL","Дуэль в «Орбите»: {a} {x} км vs {b} {y} км":"Orbit duel: {a} {x} km vs {b} {y} km","ПОБЕДА: {n}":"WINNER: {n}",
+ "ДУЭЛЬ НА РУССКОМ — ЯЗЫК ПЕРЕКЛЮЧЁН":"THIS DUEL IS IN ENGLISH — LANGUAGE SWITCHED","КОМНАТА НА РУССКОМ — ЯЗЫК ПЕРЕКЛЮЧЁН":"THIS ROOM IS IN ENGLISH — LANGUAGE SWITCHED",
+ // комната
+ "ВСЕ ТЕМЫ":"ALL TOPICS","ВОПРОСОВ":"QUESTIONS","ТЕМА":"TOPIC","ИГРА ДЛЯ КОМПАНИИ — ДО 30 ЧЕЛОВЕК.":"A GAME FOR A GROUP — UP TO 30 PEOPLE.",
+ "ВСЕ ОТВЕЧАЮТ НА ОДИН ВОПРОС ОДНОВРЕМЕННО.":"EVERYONE ANSWERS THE SAME QUESTION AT ONCE.","ПОСЛЕ ВОПРОСА — ОТВЕТЫ ВСЕХ И ТАБЛИЦА. УНИКАЛЬНЫЕ ОТВЕТЫ СВЕТЯТСЯ.":"AFTER EACH QUESTION — EVERYONE'S ANSWERS AND THE TABLE. UNIQUE ANSWERS GLOW.",
+ "ВЕРНУТЬСЯ В {c}":"BACK TO {c}","СОЗДАТЬ КОМНАТУ":"CREATE ROOM","ИЛИ ВВЕДИ КОД КОМНАТЫ":"OR ENTER A ROOM CODE","СЛИШКОМ МНОГО КОМНАТ — ПОДОЖДИ":"TOO MANY ROOMS — PLEASE WAIT",
+ "КОД — 4 СИМВОЛА":"THE CODE IS 4 CHARACTERS","КОМНАТА НЕ НАЙДЕНА":"ROOM NOT FOUND","КОМНАТА ЗАПОЛНЕНА":"THE ROOM IS FULL","собирает экипаж":"is gathering a crew",
+ "игра окончена — ждём новую":"game over — waiting for a new one","идёт вопрос {n} из {m} — войдёшь со следующего":"question {n} of {m} in progress — you'll join from the next one",
+ "ЗОВУТ В КОМНАТУ":"YOU'RE INVITED TO A ROOM","в экипаже":"crew","КОМНАТА {c}":"ROOM {c}","ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ":"YOU'RE NO LONGER IN THE ROOM","КОМНАТА ЗАКРЫЛАСЬ":"THE ROOM HAS CLOSED",
+ "ИТОГИ КОМНАТЫ":"ROOM RESULTS","МЕСТО":"PLACE","ОТВЕТИЛИ {a}/{b}":"ANSWERED {a}/{b}","КОМНАТА · ЛОББИ":"ROOM · LOBBY","ПОЗВАТЬ ДРУЗЕЙ":"INVITE FRIENDS","ЭКИПАЖ":"CREW",
+ "▲ СТАРТ ▲":"▲ START ▲","можно и одному, но вместе веселее — отправь ссылку":"you can play solo, but it's more fun together — send the link",
+ "новые игроки могут зайти и во время игры":"new players can join mid-game","ЖДЁМ, КОГДА {n} НАЖМЁТ СТАРТ":"WAITING FOR {n} TO PRESS START","ХОСТ":"THE HOST",
+ "ВЫЙТИ ИЗ КОМНАТЫ":"LEAVE ROOM","Залетай ко мне в комнату в «Орбите»! Код {c}":"Join my room in Orbit! Code {c}","НЕ ВЫШЛО":"FAILED","НЕ ВЫШЛО — ЕЩЁ РАЗ":"FAILED — TRY AGAIN",
+ "ОБНОВИ СТРАНИЦУ — У ТЕБЯ СТАРАЯ ВЕРСИЯ ИГРЫ":"REFRESH THE PAGE — YOU HAVE AN OLD VERSION OF THE GAME",
+ "▲ ТЫ ЗАШЁЛ ПОСРЕДИ ВОПРОСА — ОТВЕЧАЕШЬ СО СЛЕДУЮЩЕГО ▲":"▲ YOU JOINED MID-QUESTION — YOU'LL ANSWER FROM THE NEXT ONE ▲","▲ ВРЕМЯ ВЫШЛО — ЖДЁМ ИТОГИ ▲":"▲ TIME'S UP — WAITING FOR RESULTS ▲",
+ "✓ ОТВЕТ ПРИНЯТ — ЖДЁМ ОСТАЛЬНЫХ":"✓ ANSWER ACCEPTED — WAITING FOR OTHERS","НЕТ СВЯЗИ — ЖМИ ЕЩЁ РАЗ":"NO CONNECTION — PRESS AGAIN","НЕ ТАК БЫСТРО":"NOT SO FAST",
+ "ПРОВЕРКА НЕ ОТВЕТИЛА — ДРУГОЙ ВАРИАНТ?":"THE CHECK DIDN'T RESPOND — ANOTHER ANSWER?","★ УНИКАЛЬНО":"★ UNIQUE","никто не успел ответить":"nobody answered in time",
+ "ты зашёл посреди вопроса — играешь со следующего":"you joined mid-question — you'll play from the next one","ОТВЕТЫ ЭКИПАЖА":"CREW ANSWERS","ТАБЛИЦА":"STANDINGS",
+ "ИТОГИ ЧЕРЕЗ":"RESULTS IN","СЛЕДУЮЩИЙ ВОПРОС ЧЕРЕЗ":"NEXT QUESTION IN","К ИТОГАМ ▲":"TO RESULTS ▲","Самый редкий ответ: {a} ({n})":"Rarest answer: {a} ({n})",
+ "1 место из {n} · победа!":"1st of {n} · victory!","{p} место из {n}":"place {p} of {n}","ИТОГИ":"RESULTS","ПОЛЁТ ЗАВЕРШЁН":"FLIGHT COMPLETE","ТЫ ПОБЕДИЛ(А)!":"YOU WON!",
+ "ТЫ НА {p} МЕСТЕ ИЗ {n}":"YOU'RE #{p} OF {n}","самый редкий ответ комнаты:":"rarest answer in the room:","▼ ВСЕ ОТВЕТЫ ПО ВОПРОСАМ":"▼ ALL ANSWERS BY QUESTION",
+ "ЕЩЁ РАЗ":"AGAIN","ХОСТ МОЖЕТ ЗАПУСТИТЬ ЕЩЁ РАЗ — ОСТАВАЙСЯ В КОМНАТЕ":"THE HOST CAN START AGAIN — STAY IN THE ROOM",
+ // рейтинг
+ "ОТПРАВЛЯЮ В РЕЙТИНГ…":"SUBMITTING TO THE RANKING…","ЭТОТ НИК НЕ ПОДОЙДЁТ — ПРИДУМАЙ ДРУГОЙ":"THAT NICKNAME WON'T WORK — PICK ANOTHER",
+ "ВОПРОСЫ ОБНОВИЛИСЬ — ОБНОВИ СТРАНИЦУ":"QUESTIONS WERE UPDATED — REFRESH THE PAGE","ЭТОТ ЗАПУСК УЖЕ НЕЛЬЗЯ ОТПРАВИТЬ":"THIS LAUNCH CAN NO LONGER BE SUBMITTED",
+ "С ЭТОГО АДРЕСА СЕГОДНЯ УЖЕ МНОГО ЗАПИСЕЙ":"TOO MANY ENTRIES FROM THIS ADDRESS TODAY","НЕ ВЫШЛО ОТПРАВИТЬ В РЕЙТИНГ":"COULDN'T SUBMIT TO THE RANKING",
+ "ПРИДУМАЙ НИК — И ТЫ В ТАБЛИЦЕ ДНЯ":"PICK A NICKNAME TO JOIN TODAY'S TABLE","В РЕЙТИНГ":"SUBMIT","НЕТ СВЯЗИ С ЦУПОМ — ПРОБУЮ ЕЩЁ":"NO LINK TO MISSION CONTROL — RETRYING",
+ "твоя запись скрыта модератором":"your entry was hidden by a moderator","ТЫ #{p} ИЗ {n}":"YOU'RE #{p} OF {n}","в рейтинге {s} км — очки пересчитал сервер":"ranked at {s} km — the server rescored your answers",
+ "ПОКА ПУСТО — СТАНЬ ПЕРВЫМ":"EMPTY SO FAR — BE THE FIRST","ВЕСЬ РЕЙТИНГ":"FULL RANKING","СЕГОДНЯ":"TODAY","ВЧЕРА":"YESTERDAY","НЕДЕЛЯ":"WEEK","ЗАГРУЖАЮ…":"LOADING…",
+ "ДОЛЕТИ СЕГОДНЯШНИЙ ЗАПУСК — И ТЫ В ТАБЛИЦЕ":"FINISH TODAY'S LAUNCH TO JOIN THE TABLE","СЫГРАЙ ЗАПУСК ДНЯ — И ТЫ В ТАБЛИЦЕ":"PLAY THE DAILY LAUNCH TO JOIN THE TABLE",
+ "ПРОДОЛЖИТЬ":"CONTINUE","ЛУЧШИЕ ЗА НЕДЕЛЮ":"BEST OF THE WEEK","ВЧЕРА ЗАПУСКОВ ЕЩЁ НЕ БЫЛО":"THERE WERE NO LAUNCHES YESTERDAY"
+};
+const I18N_MISS=new Set();
+function tl(s,v){let r=s;
+  if(EN){const x=I18N_EN[s];if(x==null){if(!I18N_MISS.has(s)){I18N_MISS.add(s);console.warn("i18n: no EN for",s)}}else r=Array.isArray(x)?x[0]:x}
+  return v?r.replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m):r}
+// кавычки вокруг ответа игрока
+const qq=s=>EN?`“${s}”`:`«${s}»`;
+// для холста: там своя переменная t (время кадра)
+const KM_SHORT=tl("км");
+// сменить язык: запоминаем и перезагружаем (вопросы грузятся только своего языка); note — что показать после загрузки
+function setLang(l,note,url){if(l!=="ru"&&l!=="en")return;try{localStorage.setItem("orb-lang",JSON.stringify(l));if(note)sessionStorage.setItem("orb-lnote",note)}catch(e){}location.href=url||location.pathname}
+function langRow(){return`<div class="langRow"><span>${tl("ЯЗЫК")}</span><div>${["ru","en"].map(l=>`<button type="button" data-lang="${l}" class="${l===LANG?"on":""}">${l.toUpperCase()}</button>`).join("")}</div></div>`}
+function bindLang(root){root.querySelectorAll("[data-lang]").forEach(b=>{b.classList.toggle("on",b.dataset.lang===LANG);b.onclick=()=>{if(b.dataset.lang!==LANG){SFX.click();setLang(b.dataset.lang)}}})}
+// сохранения ежедневных запусков: русские — как раньше, английские — отдельно
+const DK=d=>(EN?"orb-d-en-":"orb-d-")+dKey(d);
+const CATS=EN?{eda:"Food & Drink",zve:"Animals",pri:"Nature",mir:"Around the World",kul:"Culture",spo:"Sports & Games",byt:"Home & Life",lyu:"People",tex:"Science & Tech",raz:"Miscellaneous"}
+ :{eda:"Еда и напитки",zve:"Животные",pri:"Природа",mir:"Вокруг света",kul:"Культура",spo:"Спорт и игры",byt:"Дом и быт",lyu:"Люди",tex:"Наука и техника",raz:"Разное"};
 /* =================== ПИКСЕЛЬНЫЕ ИКОНКИ =================== */
 // каждая иконка — пиксельная карта; символы → цвета из c
 const ICONS={
@@ -614,8 +730,12 @@ const ICONS={
 function ico(name,size=16,extra=""){const I=ICONS[name];if(!I)return"";const h=I.m.length,w=Math.max(...I.m.map(r=>r.length));let r="";I.m.forEach((row,y)=>{for(let x=0;x<row.length;x++){const col=I.c[row[x]];if(col)r+=`<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`}});return`<svg class="ico ${extra}" width="${size}" height="${Math.round(size*h/w)}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`}
 const CAT_ICON=Object.fromEntries(Object.keys(CATS).map(k=>[k,ico(k,18)]));
 function tierBadge(T,size=26){const inner=T.p===100?ico("star",size-8):"";return`<span class="tbadge ${T.p===100?"tb100":""}" style="width:${size}px;height:${size}px;background:${T.p===100?"#2a0f3a":T.c};border-color:${T.c};box-shadow:0 0 10px ${T.c}88" title="${T.n} +${T.p}">${inner}</span>`}
-const norm=s=>s.toLowerCase().replace(/ё/g,"е").replace(/\+\+/g," плюс плюс").replace(/#/g," шарп").replace(/[-‐–—]/g," ").replace(/[^a-zа-я0-9 ]/g,"").replace(/\s+/g," ").trim();
-const stem=s=>s.split(" ").map(w=>w.length>4?w.replace(/(ями|ами|ого|его|ой|ей|ий|ый|ая|яя|ое|ее|ые|ие|ов|ев|ок|ек|ы|и|а|я|о|е|ь|у|ю|й)$/,""):w).join(" ");
+// английский: без ё, диакритика снимается, «&» = and; кириллица в английской игре не засчитывается
+const norm=EN?s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\+\+/g," plus plus").replace(/#/g," sharp").replace(/&/g," and ").replace(/[-‐–—]/g," ").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim()
+ :s=>s.toLowerCase().replace(/ё/g,"е").replace(/\+\+/g," плюс плюс").replace(/#/g," шарп").replace(/[-‐–—]/g," ").replace(/[^a-zа-я0-9 ]/g,"").replace(/\s+/g," ").trim();
+// английская «основа»: лёгкое правило множественного числа (apples → apple, boxes → box, berries/berry → berri)
+const stem=EN?s=>s.split(" ").map(w=>w.length>3?w.replace(/([^s])s$/,"$1").replace(/e$/,"").replace(/y$/,"i"):w).join(" ")
+ :s=>s.split(" ").map(w=>w.length>4?w.replace(/(ями|ами|ого|его|ой|ей|ий|ый|ая|яя|ое|ее|ые|ие|ов|ев|ок|ек|ы|и|а|я|о|е|ь|у|ю|й)$/,""):w).join(" ");
 // data/m*.js — дополнительные настоящие ответы (0%, «один на миллион»), ключ = текст вопроса
 const MORE=window.ORB_MORE||{};
 // q.map: нормализованный ключ → ответ. Ручные списки: повтор первого ключа пропускаем, лишние ключи не дублируем
@@ -664,18 +784,30 @@ function loadWD(id){
 function readyWD(id,ms=4000){return Promise.race([loadWD(id),new Promise(r=>setTimeout(r,ms))])}
 
 const TIERS={
- 0:{p:0,  n:"МИМО ОРБИТЫ",   f:"Двигатель так и не запустился.",                     c:"#7d8ea3",e:"×"},
- 10:{p:10, n:"ВОЗДУШНЫЙ ШАР", f:"Ответ, который выкрикивает каждый.",                 c:"#d7e3ee",e:"□"},
- 15:{p:15, n:"СЛИШКОМ ХИТРО", f:"Казалось оригинальным? Полстраны подумало так же.",  c:"#ffd54a",e:"◇"},
- 30:{p:30, n:"В СТРОЮ",       f:"Надёжно — летишь вместе со всей эскадрильей.",       c:"#5ef38c",e:"■"},
- 60:{p:60, n:"РЕДКОСТЬ",      f:"Мало кто до этого додумался.",                       c:"#4fc3ff",e:"▲"},
- 85:{p:85, n:"ДАЛЬНИЙ КОСМОС",f:"Почти никто так не ответил.",                        c:"#c77dff",e:"◆"},
- 100:{p:100,n:"ОДИН НА МИЛЛИОН",f:"Так не ответил никто. Вообще.",                     c:"#ff4fd8",e:"★"},
+ 0:{p:0,  n:tl("МИМО ОРБИТЫ"),   f:tl("Двигатель так и не запустился."),                     c:"#7d8ea3",e:"×"},
+ 10:{p:10, n:tl("ВОЗДУШНЫЙ ШАР"), f:tl("Ответ, который выкрикивает каждый."),                 c:"#d7e3ee",e:"□"},
+ 15:{p:15, n:tl("СЛИШКОМ ХИТРО"), f:tl("Казалось оригинальным? Полстраны подумало так же."),  c:"#ffd54a",e:"◇"},
+ 30:{p:30, n:tl("В СТРОЮ"),       f:tl("Надёжно — летишь вместе со всей эскадрильей."),       c:"#5ef38c",e:"■"},
+ 60:{p:60, n:tl("РЕДКОСТЬ"),      f:tl("Мало кто до этого додумался."),                       c:"#4fc3ff",e:"▲"},
+ 85:{p:85, n:tl("ДАЛЬНИЙ КОСМОС"),f:tl("Почти никто так не ответил."),                        c:"#c77dff",e:"◆"},
+ 100:{p:100,n:tl("ОДИН НА МИЛЛИОН"),f:tl("Так не ответил никто. Вообще."),                     c:"#ff4fd8",e:"★"},
 };
 const TIER_STEPS=[10,15,30,60,85,100];
 function tierOf(a){if(!a)return TIERS[0];if(a.clever)return TIERS[15];if(a.pct>=15)return TIERS[10];if(a.pct>=6)return TIERS[30];if(a.pct>=2)return TIERS[60];if(a.pct>=1)return TIERS[85];return TIERS[100]}
 
-const LANDMARKS=[
+const LANDMARKS=EN?[
+ [2,"clouds start here"],[11,"airliners cruise here — 11 km"],[20,"stratosphere · the sky darkens"],[39,"record skydive — 39 km"],
+ [50,"top of the stratosphere"],[80,"meteors burn up here"],[100,"KARMAN LINE · SPACE BEGINS"],[120,"shuttles re-enter the atmosphere"],
+ [181,"Vostok 1 perigee · Gagarin, 1961"],[250,"auroras glow at this height"],[327,"Vostok 1 apogee — 327 km"],
+ [408,"ISS · 16 sunrises a day"],[470,"the atmosphere is almost gone"],[540,"Hubble Space Telescope"],[620,"thousands of satellites circle here"],[700,"ORBIT · a perfect launch ends here",1],
+ [780,"Iridium comms satellites — 780 km"],[1000,"1,000 km · low orbits thin out"],[1200,"OneWeb constellation — 1,200 km"],
+ [1500,"the inner radiation belt begins"],[2000,"EDGE OF LOW EARTH ORBIT · 2,000 km",1],[3500,"Earth no longer fits in the porthole"],
+ [6371,"you're one Earth radius up — 6,371 km"],[8062,"O3b satellites — 8,062 km"],[13000,"outer radiation belt"],
+ [19100,"GLONASS — 19,100 km"],[20200,"GPS · 20,200 km",1],[23222,"Galileo — 23,222 km"],
+ [35786,"GEOSTATIONARY ORBIT · 35,786 km",1],[60000,"magnetopause · end of Earth's magnetic shield"],[100000,"100,000 km · Earth is the size of a coin"],
+ [384400,"THE MOON · 384,400 km",1],[1500000,"Lagrange point L2 · the Webb telescope",1],[55000000,"MARS at its closest · ~55 million km",1],
+ [149600000,"1 ASTRONOMICAL UNIT · to the Sun",1],
+]:[
  [2,"облака начинаются здесь"],[11,"здесь летают авиалайнеры — 11 км"],[20,"стратосфера · небо темнеет"],[39,"рекордный прыжок с парашютом — 39 км"],
  [50,"конец стратосферы"],[80,"здесь сгорают метеоры"],[100,"ЛИНИЯ КАРМАНА · НАЧИНАЕТСЯ КОСМОС"],[120,"челноки входят в атмосферу"],
  [181,"перигей «Востока-1» · Гагарин, 1961"],[250,"северное сияние горит на этой высоте"],[327,"апогей «Востока-1» — 327 км"],
@@ -750,7 +882,8 @@ function junkWord(w){
   return false;
 }
 // модели бывают только у техники: оружие, транспорт, гаджеты, инструменты — на «мультик» или «имя» не засчитываем
-const MODEL_Q=/оружи|автомат|пистолет|винтовк|танк|самол|вертол|ракет|автомобил|машин|техник|телефон|смартфон|гаджет|инструмент|летать|поезд|корабл|процессор|видеокарт/;
+const MODEL_Q=EN?/weapon|gun|rifle|tank|plane|aircraft|helicopter|rocket|\bcar\b|vehicle|tech|electronic|phone|gadget|tool|\bfly\b|train|ship|processor|graphics card/
+ :/оружи|автомат|пистолет|винтовк|танк|самол|вертол|ракет|автомобил|машин|техник|телефон|смартфон|гаджет|инструмент|летать|поезд|корабл|процессор|видеокарт/;
 function freeAns(q,raw){
   if(!MODEL_Q.test(q.q.toLowerCase()))return null;
   const n=norm(raw);if(n.replace(/ /g,"").length<3)return null;
@@ -792,7 +925,15 @@ const SFX={
   win:()=>[0,4,7,12,7,12,16,24].forEach((s,i)=>tone(392*Math.pow(2,s/12),.2,"square",.05,0,i*.11)),
 };
 function setMuteUI(){$("sndBtn").innerHTML=ico(muted?"mute":"snd",18);$("sndBtn").style.opacity=muted?.7:1}
-function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} АРХИВ`;$("packBtn").innerHTML=`${ico("grid",14)} НАБОРЫ`;$("endlessBtn").innerHTML=`${ico("inf",16)} БЕСКОНЕЧНО`;$("duelBtn").innerHTML=`${ico("duel",14)} ДУЭЛЬ`;$("roomBtn").innerHTML=`${ico("party",14)} КОМНАТА`;$("lbBtn").innerHTML=`${ico("star",12)} РЕЙТИНГ`;$("howLink").innerHTML=`${ico("help",10)} КАК ИГРАТЬ`}
+function initIcons(){$("menuBtn").innerHTML=ico("menu",16);$("archBtn").innerHTML=`${ico("clock",14)} ${tl("АРХИВ")}`;$("packBtn").innerHTML=`${ico("grid",14)} ${tl("НАБОРЫ")}`;$("endlessBtn").innerHTML=`${ico("inf",16)} ${tl("БЕСКОНЕЧНО")}`;$("duelBtn").innerHTML=`${ico("duel",14)} ${tl("ДУЭЛЬ")}`;$("roomBtn").innerHTML=`${ico("party",14)} ${tl("КОМНАТА")}`;$("lbBtn").innerHTML=`${ico("star",12)} ${tl("РЕЙТИНГ")}`;$("howLink").innerHTML=`${ico("help",10)} ${tl("КАК ИГРАТЬ")}`}
+// статичная разметка: тексты с data-i и подсказки с data-ip / data-it
+function initText(){
+  document.querySelectorAll("[data-i]").forEach(e=>{e.textContent=tl(e.textContent.trim())});
+  document.querySelectorAll("[data-ip]").forEach(e=>{e.placeholder=tl(e.placeholder)});
+  document.querySelectorAll("[data-it]").forEach(e=>{e.title=tl(e.title)});
+  document.documentElement.classList.remove("i18n");bindLang($("langSw"));
+  try{const n=sessionStorage.getItem("orb-lnote");if(n){sessionStorage.removeItem("orb-lnote");setTimeout(()=>toast(n==="duel"?tl("ДУЭЛЬ НА РУССКОМ — ЯЗЫК ПЕРЕКЛЮЧЁН"):tl("КОМНАТА НА РУССКОМ — ЯЗЫК ПЕРЕКЛЮЧЁН")),400)}}catch(e){}
+}
 
 /* =================== МИР / CANVAS =================== */
 const cv=$("cv"),cx=cv.getContext("2d",{alpha:false});let W=0,H=0,DPR=1;
@@ -1143,7 +1284,7 @@ function draw(){
     cx.strokeStyle=col;cx.setLineDash([4,6]);cx.lineWidth=1;cx.beginPath();if(left){cx.moveTo(10,y+.5);cx.lineTo(40,y+.5)}else{cx.moveTo(W-40,y+.5);cx.lineTo(W-10,y+.5)}cx.stroke();cx.setLineDash([]);
     const lw=labWidth(txt);cx.fillStyle="rgba(2,6,20,.35)";cx.fillRect(left?43:W-49-lw,y-7,lw+6,14);cx.fillStyle=col;cx.textAlign=left?"left":"right";cx.fillText(txt,left?46:W-46,y+1);cx.textAlign="left"});
   // шкала справа
-  let step=1;if(w.px<=20){const raw=H/w.px/6,p10=Math.pow(10,Math.floor(Math.log10(raw)));step=[1,2,5,10].map(m=>m*p10).find(v=>v>=raw)}cx.fillStyle="rgba(200,230,255,.35)";for(let a=Math.floor((cam-H/w.px)/step)*step;a<cam+H/w.px;a+=step){if(a<0)continue;const y=ys(a);if(y<0||y>H)continue;cx.fillRect(W-6,y,6,1);if(a%(step*2)===0&&step>1){cx.textAlign="right";cx.fillText(a.toLocaleString("ru-RU")+"км",W-10,y-8);cx.textAlign="left"}}
+  let step=1;if(w.px<=20){const raw=H/w.px/6,p10=Math.pow(10,Math.floor(Math.log10(raw)));step=[1,2,5,10].map(m=>m*p10).find(v=>v>=raw)}cx.fillStyle="rgba(200,230,255,.35)";for(let a=Math.floor((cam-H/w.px)/step)*step;a<cam+H/w.px;a+=step){if(a<0)continue;const y=ys(a);if(y<0||y>H)continue;cx.fillRect(W-6,y,6,1);if(a%(step*2)===0&&step>1){cx.textAlign="right";cx.fillText(a.toLocaleString(LOC)+KM_SHORT,W-10,y-8);cx.textAlign="left"}}
   // частицы
   for(let i=0;i<PMAX;i++){const p=POOL[i];if(!p.on)continue;const y=ys(p.alt);if(y<-40||y>H+40)continue;const k=p.life/p.ml;
     if(p.c===0){cx.fillStyle=k>.6?"#fff1b0":k>.3?"#ffb02e":"#ff4f2e";cx.globalAlpha=clamp(k*1.4,0,1)}
@@ -1194,10 +1335,10 @@ let G=null,clock=null,countT=[];
 const show=(id,on)=>$(id).classList.toggle("hidden",!on);
 function hideAll(){["pcard","bar","res","end","count"].forEach(i=>show(i,false));$("err").classList.remove("on");document.body.classList.remove("urgent")}
 
-function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function f(n){const k=clamp((n-t0)/dur,0,1);const e=1-Math.pow(1-k,3);el.textContent=Math.round(lerp(from,to,e)).toLocaleString("ru-RU")+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
-function setHud(){if(G.mode==="room")return roomHud();if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=`ВОПРОС ${G.i+1} · ∞`;return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=`ВОПРОС ${Math.min(G.i+1,7)} ИЗ 7`}
+function animNum(el,from,to,suf="",dur=900){const t0=performance.now();function f(n){const k=clamp((n-t0)/dur,0,1);const e=1-Math.pow(1-k,3);el.textContent=Math.round(lerp(from,to,e)).toLocaleString(LOC)+suf;if(k<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
+function setHud(){if(G.mode==="room")return roomHud();if(G.mode==="endless"){$("pipRow").innerHTML="";$("pipTxt").textContent=tl("ВОПРОС {n} · ∞",{n:G.i+1});return}$("pipRow").innerHTML=G.qs.map((_,i)=>{const l=G.log[i];return`<i class="${i===G.i&&!l?"cur":""}" style="${l?`background:${tierOf(l.hit).c};border-color:${tierOf(l.hit).c};box-shadow:0 0 8px ${tierOf(l.hit).c}`:""}"></i>`}).join("");$("pipTxt").textContent=tl("ВОПРОС {n} ИЗ {m}",{n:Math.min(G.i+1,7),m:7})}
 
-function storeKey(){return G.mode==="daily"?"orb-d-"+dKey(dateOf(G.day)):G.mode==="duel"?"orb-du-"+G.duel.code:null}
+function storeKey(){return G.mode==="daily"?DK(dateOf(G.day)):G.mode==="duel"?"orb-du-"+G.duel.code:null}
 // в лог пишем каноническое название; p — «процент» ответа, ai — засчитан проверкой ИИ
 function save(done){const k=storeKey();if(!k)return;const log=G.log.map(l=>({qid:l.qid,raw:l.raw,label:l.hit?l.hit.label:null,free:l.hit&&l.hit.free?1:0,pts:l.pts,...(l.hit?{p:l.hit.pct}:{}),...(l.hit&&l.hit.ai?{ai:1}:{})}));store.set(k,{...(store.get(k)||{}),i:G.i,score:G.score,log,done});if(G.mode==="duel")duelPush(G.duel.code,G.duel.token,log.length,G.score,log,done)}
 // старые сохранения без p тоже читаются: уровень восстанавливаем по очкам, если список ещё не загружен или поменялся
@@ -1212,16 +1353,16 @@ function restoreLog(saved){return saved.log.map(l=>{const q=Qs[l.qid];let hit=nu
 function startGame(mode,opt={}){
   ac();SFX.click();
   let qs,title,day=null;
-  if(mode==="daily"){day=opt.day||TODAY;qs=dailySet(day);title=`ЗАПУСК #${day}`}
-  else if(mode==="duel"){qs=opt.qs;title=`ДУЭЛЬ ${opt.code}`}
+  if(mode==="daily"){day=opt.day||TODAY;qs=dailySet(day);title=tl("ЗАПУСК #{n}",{n:day})}
+  else if(mode==="duel"){qs=opt.qs;title=tl("ДУЭЛЬ {c}",{c:opt.code})}
   else if(mode==="pack"){qs=shuffle(Qs.filter(q=>q.cat===opt.cat).map(q=>q.id),Math.random).slice(0,7);title=CATS[opt.cat].toUpperCase()}
-  else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=`БЕСКОНЕЧНЫЙ #${n}`}
+  else{const n=(store.get("orb-endless")||0)+1;store.set("orb-endless",n);qs=shuffle(Qs.map(q=>q.id),Math.random);title=tl("БЕСКОНЕЧНЫЙ #{n}",{n})}
   stopPoll();roomStop();show("opp",false);
   G={mode,day,qs,i:0,score:0,log:[],title};prefetch();
   if(mode==="duel"){const s=store.get("orb-du-"+opt.code)||{};G.duel={code:opt.code,token:s.t};
-    if(s.log&&s.log.length){G.log=restoreLog(s);G.i=s.log.length;G.score=s.score;if(s.done||G.i>=7){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем дуэль — второго шанса нет")}
+    if(s.log&&s.log.length){G.log=restoreLog(s);G.i=s.log.length;G.score=s.score;if(s.done||G.i>=7){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast(tl("Продолжаем дуэль — второго шанса нет"))}
     startPoll();}
-  if(mode==="daily"){const s=store.get("orb-d-"+dKey(dateOf(day)));if(s){G.log=restoreLog(s);G.i=s.i;G.score=s.score;if(s.done){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast("Продолжаем запуск — второго шанса нет")}}
+  if(mode==="daily"){const s=store.get(DK(dateOf(day)));if(s){G.log=restoreLog(s);G.i=s.i;G.score=s.score;if(s.done){enterGameView(true);world.alt=G.score;world.cam=G.score;return finish(true)}toast(tl("Продолжаем запуск — второго шанса нет"))}}
   enterGameView(false);
   setTimeout(askQ,700);
 }
@@ -1229,8 +1370,8 @@ function enterGameView(instant){
   show("home",false);show("hud",true);hideAll();
   world.pxT=pxGame();world.anchorT=.74;world.idleFlame=.25;
   if(instant){world.px=world.pxT}
-  world.tierBase=null;world.tierAT=0;$("hScoreL").textContent="СЧЁТ";
-  $("altV").textContent=(G?G.score:0)+" км";$("scoreV").textContent=G?G.score:0;
+  world.tierBase=null;world.tierAT=0;$("hScoreL").textContent=tl("СЧЁТ");
+  $("altV").textContent=(G?G.score:0)+tl(" км");$("scoreV").textContent=G?G.score:0;
   world.alt=G?G.score:0;setHud();
 }
 // бесконечный: вопросы не повторяются, пока не кончатся все 100, потом новая перетасовка
@@ -1244,7 +1385,7 @@ function askQ(){
 }
 function showQ(){
   const q=Qs[G.qs[G.i]];setHud();hideAll();
-  $("qn").textContent=`${G.title} · ВОПРОС ${G.i+1}${G.mode==="endless"?"":" ИЗ 7"}`;
+  $("qn").textContent=`${G.title} · ${tl("ВОПРОС")} ${G.i+1}${G.mode==="endless"?"":tl(" ИЗ 7")}`;
   const qt=$("qt");qt.textContent="";qt.classList.add("typed");
   const card=$("pcard");card.classList.remove("out","in");void card.offsetWidth;card.classList.add("in");show("pcard",true);
   let k=0;const txt=q.q;const ty=setInterval(()=>{qt.textContent=txt.slice(0,++k);if(k%2===0)tone(900+Math.random()*200,.02,"square",.02);if(k>=txt.length){clearInterval(ty);qt.classList.remove("typed")}},28);
@@ -1255,7 +1396,7 @@ function showQ(){
   G.st=null;{const g=G,gi=G.i;getStats(q).then(s=>{if(s&&G===g&&g.i===gi&&!g.locked)g.st={i:gi,s}})}
   countT.forEach(clearTimeout);countT=[];
   [3,2,1].forEach((n,i)=>countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent=n;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");show("count",true);SFX.beep()},i*700+200)));
-  countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent="ПОЕХАЛИ!";c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");SFX.go();if(G.checking)G.clockPending=true;else startClock()},2300));
+  countT.push(setTimeout(()=>{if(G.locked)return;const c=$("count");c.textContent=tl("ПОЕХАЛИ!");c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");SFX.go();if(G.checking)G.clockPending=true;else startClock()},2300));
 }
 // цвет кольца плавно: голубой → золотой → розовый; последние 5 секунд — тревога (пульс кольца и красная кромка экрана)
 const RING_C=[[95,243,255],[255,213,74],[255,79,139]];
@@ -1272,11 +1413,13 @@ let errT;function err(msg){const e=$("err");e.textContent=msg;e.classList.add("o
 $("bar").addEventListener("submit",async e=>{e.preventDefault();if(!G||G.locked||G.checking)return;if(G.mode==="room")return roomSubmit();const raw=$("ans").value.trim();if(!raw)return;const q=Qs[G.qs[G.i]];
   let hit=findAns(q,raw)||freeAns(q,raw);
   if(!hit&&aiWorthy(q,raw)){const g=G;hit=await aiAsk(q,raw);if(G!==g||G.locked)return}
-  if(!hit){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}commit(raw,hit)});
+  if(!hit){err(tl("«{a}» — не засчитано. Ещё вариант!",{a:raw.slice(0,20)}));$("ans").select();return}commit(raw,hit)});
 /* ===== проверка ИИ: ответа нет в списках → спрашиваем Cloudflare Worker (worker/), есть ли такое на самом деле ===== */
 // адрес воркера, например "https://orbita-check.<имя>.workers.dev"; пусто — проверка полностью выключена
 // свой сервер (Oracle): проверка ответов нейросетью и дуэли
-const API=(/sslip\.io$/.test(location.hostname)?location.origin:"https://orbita.129-151-216-221.sslip.io")+"/api";
+// для разработки на localhost можно указать свой API: localStorage["orb-api"]="http://127.0.0.1:8790"
+const DEV_API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&(()=>{try{return localStorage.getItem("orb-api")}catch(e){return null}})();
+const API=(/sslip\.io$/.test(location.hostname)?location.origin:DEV_API||"https://orbita.129-151-216-221.sslip.io")+"/api";
 const AI_URL=API;
 const AI_PCT={1:6,2:2,3:1,4:0,5:0};// «редкость» 1–5 от ИИ → проценты
 const aiSeen=new Map();
@@ -1284,14 +1427,14 @@ function aiWorthy(q,raw){const n=norm(raw);return!!AI_URL&&n.replace(/ /g,"").le
 async function aiFetch(q,raw){
   const key=q.id+"|"+norm(raw);if(aiSeen.has(key))return aiSeen.get(key);
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),7000);
-  try{const r=await fetch(AI_URL.replace(/\/+$/,"")+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:q.q,a:raw.slice(0,60)}),signal:ctl.signal});
+  try{const r=await fetch(AI_URL.replace(/\/+$/,"")+"/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:q.q,a:raw.slice(0,60),lang:LANG}),signal:ctl.signal});
     const d=await r.json();if(r.ok&&d&&typeof d.ok==="boolean")aiSeen.set(key,d);return d}
   catch(e){return null}finally{clearTimeout(t)}
 }
 // пока ждём ответ, часы стоят — проверка не съедает 25 секунд
 async function aiAsk(q,raw){
   const g=G;g.checking=true;const wasOn=g.clockOn;if(wasOn)clearInterval(clock);
-  const e=$("err"),a=$("ans");clearTimeout(errT);e.textContent="ПРОВЕРЯЮ…";e.classList.add("on","chk");a.disabled=true;
+  const e=$("err"),a=$("ans");clearTimeout(errT);e.textContent=tl("ПРОВЕРЯЮ…");e.classList.add("on","chk");a.disabled=true;
   const d=await aiFetch(q,raw);
   g.checking=false;e.classList.remove("on","chk");if(G!==g)return null;a.disabled=false;
   if(!G.locked){if(wasOn)startClock(G.left);else if(G.clockPending){G.clockPending=false;startClock()}setTimeout(()=>a.focus(),0)}
@@ -1305,11 +1448,11 @@ function pid(){let p=store.get("orb-pid");if(!/^[0-9a-f]{32}$/.test(p||"")){p=Ar
 function apiPost(path,body){return fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),keepalive:true})}
 const modeName=()=>G.mode==="daily"?(G.day===TODAY?"daily":"archive"):G.mode;
 // отправили и забыли: игра не ждёт и не замечает ошибок
-function sendAns(q,hit){try{apiPost("/answer",{pid:pid(),qid:q.id,q:q.q,label:hit?hit.label.slice(0,60):null,mode:modeName(),...(G.mode==="daily"?{day:G.day}:{})}).catch(()=>{})}catch(e){}}
+function sendAns(q,hit){try{apiPost("/answer",{pid:pid(),lang:LANG,qid:q.id,q:q.q,label:hit?hit.label.slice(0,60):null,mode:modeName(),...(G.mode==="daily"?{day:G.day}:{})}).catch(()=>{})}catch(e){}}
 // {total, top:[[label,n]]} или null; ждём не дольше 4 с
 function getStats(q){
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),4000);
-  return fetch(`${API}/stats?q=${q.id}`,{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(d=>d&&Number.isInteger(d.total)&&Array.isArray(d.top)?mkStat(q,d):null).catch(()=>null).finally(()=>clearTimeout(t));
+  return fetch(`${API}/stats?q=${q.id}&lang=${LANG}`,{signal:ctl.signal}).then(r=>r.ok?r.json():null).then(d=>d&&Number.isInteger(d.total)&&Array.isArray(d.top)?mkStat(q,d):null).catch(()=>null).finally(()=>clearTimeout(t));
 }
 // счётчики раскладываем по ответам вопроса (синонимы сходятся в один ответ)
 function mkStat(q,d){const obj=new Map(),lab=new Map(),extra=[];
@@ -1330,7 +1473,7 @@ function commit(raw,hit){
   const h0=hit;hit=scored(hit,st);
   const T=tierOf(hit),pts=T.p;const from=G.score;
   G.log[G.i]={qid:G.qs[G.i],raw,hit,pts};G.score+=pts;save(false);
-  if(corrected(raw,hit))toast(`ЗАСЧИТАНО КАК «${hit.label.toUpperCase()}»`);
+  if(corrected(raw,hit))toast(tl("ЗАСЧИТАНО КАК {a}",{a:qq(hit.label.toUpperCase())}));
   if(h0&&!store.get("orb-egg2")&&h0.pct===Math.max(...q.a.map(a=>a.pct))){store.set("orb-egg2",1);$("pcard").classList.replace("in","out");show("bar",false);return showEgg(()=>launchPart(raw,hit,T,pts,from))}
   launchPart(raw,hit,T,pts,from);
 }
@@ -1353,7 +1496,7 @@ function launchPart(raw,hit,T,pts,from){
   world.anim={type:"launch",t:0,ign:.6,dur,from,to:from+pts,tierP:pts,done:()=>{world.finalP=pts;reveal(T,raw,hit,from)}};
   animNumDelayed(from,from+pts,600,dur*1000);
 }
-function animNumDelayed(a,b,delay,dur){setTimeout(()=>{animNum($("altV"),a,b," км",dur)},delay)}
+function animNumDelayed(a,b,delay,dur){setTimeout(()=>{animNum($("altV"),a,b,tl(" км"),dur)},delay)}
 function reveal(T,raw,hit,from){
   const q=Qs[G.qs[G.i]];world.anchorT=.88;
   if(T.p>0){tierFx(T);SFX.tier(T.p);animNum($("scoreV"),from,G.score,"",700)}
@@ -1367,17 +1510,17 @@ function reveal(T,raw,hit,from){
   const max=top[0].pct||1;
   // «так ответили N% игроков» — когда игроков уже достаточно; сам игрок тоже считается
   let said="";if(hit){const n=cntOf(st,hit);
-    if(st&&st.total>=REAL_MIN)said=(hit.ai?"проверено ИИ · ":"")+(n?`так ответили ${fmtPct((n+1)/(st.total+1)*100)}% игроков`:`из ${st.total} игроков так не ответил никто`);
-    else said=hit.ai?"проверено ИИ — такое действительно есть":hit.pct?`так ответили ~${fmtPct(hit.pct)}%`:hit.free?"уникальный ответ — такого нет ни у кого":"ни одного совпадения"}
+    if(st&&st.total>=REAL_MIN)said=(hit.ai?tl("проверено ИИ · "):"")+(n?tl("так ответили {p}% игроков",{p:fmtPct((n+1)/(st.total+1)*100)}):tl("из {n} игроков так не ответил никто",{n:st.total}));
+    else said=hit.ai?tl("проверено ИИ — такое действительно есть"):hit.pct?tl("так ответили ~{p}%",{p:fmtPct(hit.pct)}):hit.free?tl("уникальный ответ — такого нет ни у кого"):tl("ни одного совпадения")}
   const r=$("res"),endless=G.mode==="endless";if(endless&&!hit)G.over=true;
   let li=0;const tName=T.p===100?T.n.split(" ").map(w=>`<span class="w">${[...w].map(c=>`<i style="--i:${li++}">${c}</i>`).join("")}</span>`).join(" "):T.n;
   r.style.setProperty("--tc",T.c);r.style.setProperty("--tcg",T.c+"55");
   r.innerHTML=`<div class="tn rise t${T.p}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 20px ${T.c}88,0 3px 0 #000`}">${tName}</div>
-   <div class="ta rise" style="animation-delay:.1s">${raw?`«${esc(raw.toUpperCase())}»`:"ВРЕМЯ ВЫШЛО"}</div>${corrected(raw,hit)?`<div class="fix rise" style="animation-delay:.15s">засчитано как «${esc(hit.label)}»</div>`:""}
-   <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+<span class="tpn">0</span> ОЧК · ${T.p?"+"+T.p+" КМ ВВЕРХ":"НА МЕСТЕ"}</div>
-   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${said}`:""}${endless&&!hit?"<br>ПОЛЁТ ОКОНЧЕН":""}</div>
-   <div class="bars rise" style="animation-delay:.45s"><h4>ЧАЩЕ ВСЕГО ОТВЕЧАЮТ</h4>${top.map(a=>`<div class="b ${isMe(a)?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="bl">${esc(a.label)}</div></div><div class="pc">${fmtPct(a.pct)}%</div></div>`).join("")}</div>
-   <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?"ИТОГИ ▲":"ДАЛЬШЕ ▲"}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">ЗАКОНЧИТЬ ▼</button>`:""}</div>`;
+   <div class="ta rise" style="animation-delay:.1s">${raw?qq(esc(raw.toUpperCase())):tl("ВРЕМЯ ВЫШЛО")}</div>${corrected(raw,hit)?`<div class="fix rise" style="animation-delay:.15s">${tl("засчитано как {a}",{a:qq(esc(hit.label))})}</div>`:""}
+   <div class="tp rise" style="animation-delay:.2s;color:${T.c}">+<span class="tpn">0</span> ${tl("ОЧК")} · ${T.p?"+"+T.p+tl(" КМ ВВЕРХ"):tl("НА МЕСТЕ")}</div>
+   <div class="tf rise" style="animation-delay:.3s">${esc(T.f)}${hit?` · ${said}`:""}${endless&&!hit?"<br>"+tl("ПОЛЁТ ОКОНЧЕН"):""}</div>
+   <div class="bars rise" style="animation-delay:.45s"><h4>${tl("ЧАЩЕ ВСЕГО ОТВЕЧАЮТ")}</h4>${top.map(a=>`<div class="b ${isMe(a)?"me":""}"><div class="tr"><div class="fl" data-w="${Math.max(2,a.pct/max*100)}"></div><div class="bl">${esc(a.label)}</div></div><div class="pc">${fmtPct(a.pct)}%</div></div>`).join("")}</div>
+   <div class="resBtns rise" style="animation-delay:.6s"><button class="btn" id="nextBtn">${(!endless&&G.i===6)||(endless&&!hit)?tl("ИТОГИ ▲"):tl("ДАЛЬШЕ ▲")}</button>${endless&&hit?`<button class="btn hot" id="stopBtn">${tl("ЗАКОНЧИТЬ ▼")}</button>`:""}</div>`;
   show("res",true);
   {const tpn=r.querySelector(".tpn");if(T.p)setTimeout(()=>{if(tpn.isConnected)animNum(tpn,0,T.p,"",Math.min(1100,400+T.p*7))},250)}
   setTimeout(()=>r.querySelectorAll(".fl").forEach(f=>f.style.width=f.dataset.w+"%"),600);
@@ -1387,20 +1530,20 @@ function reveal(T,raw,hit,from){
 function next(){if(!G||$("res").classList.contains("hidden"))return;SFX.click();show("res",false);world.tierAT=0;world.anchorT=.74;G.i++;if(G.mode==="endless"){if(G.over)finish(false);else askQ();return}save(G.i>=7);if(G.i<7)askQ();else finish(false)}
 function finish(already){
   if(G.mode==="duel")return duelEnd(already);
-  hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent="ЗАПУСК ЗАВЕРШЁН";
+  hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent=tl("ЗАПУСК ЗАВЕРШЁН");
   if(G.mode==="daily"&&!already){save(true);updateStreak()}
-  const alt=G.score;let lm="на стартовой площадке";for(const[a,t]of LANDMARKS)if(alt>=a)lm=t;
+  const alt=G.score;let lm=tl("на стартовой площадке");for(const[a,t]of LANDMARKS)if(alt>=a)lm=t;
   const grid=G.log.map(l=>tierOf(l.hit).e).join("");
-  G.share=`ОРБИТА · ${G.title}\n▲ ${alt} км — ${lm}\n${grid}`;
+  G.share=`${tl("ОРБИТА")} · ${G.title}\n▲ ${fmtKm(alt)}${tl(" км")} — ${lm}\n${grid}`;
   const e=$("end");
-  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ЗАВЕРШЁН</h2><div class="alt" id="endAlt">0 КМ</div><div class="lm">▲ ${esc(lm)}</div><div id="dSum"></div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>${G.mode==="daily"&&G.day===TODAY?`<div id="lbBox"></div>`:""}
-   <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw)+(corrected(l.raw,l.hit)?` → ${esc(l.hit.label)}`:""):"— время вышло"} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
-   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} БЕСКОНЕЧНО</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ЕЩЁ ЗАПУСК</button>`}</div>
-   <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>
-   ${G.mode==="daily"&&G.day===TODAY?`<div class="next">СЛЕДУЮЩИЙ ЗАПУСК ЧЕРЕЗ <span id="nextT"></span></div>`:""}`;
-  show("end",true);animNum($("endAlt"),0,alt," КМ",1400);
+  e.innerHTML=`<h2>${ico("rocket",14)} ${esc(G.title)} · ${tl("ЗАВЕРШЁН")}</h2><div class="alt" id="endAlt">0${tl(" КМ")}</div><div class="lm">▲ ${esc(lm)}</div><div id="dSum"></div><div class="grid">${G.log.map((l,i)=>`<span style="animation-delay:${.3+Math.min(i,20)*.12}s">${tierBadge(tierOf(l.hit))}</span>`).join("")}</div>${G.mode==="daily"&&G.day===TODAY?`<div id="lbBox"></div>`:""}
+   <table>${G.log.map(l=>{const q=Qs[l.qid],T=tierOf(l.hit);return`<tr><td class="b0">${tierBadge(T,14)}</td><td>${esc(q.q)}<br><small>${l.raw?esc(l.raw)+(corrected(l.raw,l.hit)?` → ${esc(l.hit.label)}`:""):tl("— время вышло")} · ${T.n.toLowerCase()}</small></td><td class="p" style="color:${T.c}">+${l.pts}</td></tr>`}).join("")}</table>
+   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="shareBtn">${ico("share",14)} ${tl("ПОДЕЛИТЬСЯ")}</button>${G.mode==="daily"?`<button class="btn hot" id="moreBtn">${ico("inf",16)} ${tl("БЕСКОНЕЧНО")}</button>`:`<button class="btn hot" id="againBtn">${ico("rocket",12)} ${tl("ЕЩЁ ЗАПУСК")}</button>`}</div>
+   <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} ${tl("НА ГЛАВНУЮ")}</button></div>
+   ${G.mode==="daily"&&G.day===TODAY?`<div class="next">${tl("СЛЕДУЮЩИЙ ЗАПУСК ЧЕРЕЗ")} <span id="nextT"></span></div>`:""}`;
+  show("end",true);animNum($("endAlt"),0,alt,tl(" КМ"),1400);
   if(!already){if(alt>=400){SFX.win();confetti()}else SFX.tier(60)}
-  const card={alt,title:G.title,date:G.day?dateOf(G.day):new Date(),big:fmtKm(alt)+" КМ",sub:cardLm(alt),badges:G.log.map(l=>tierOf(l.hit))};
+  const card={alt,title:G.title,date:G.day?dateOf(G.day):new Date(),big:fmtKm(alt)+tl(" КМ"),sub:cardLm(alt),badges:G.log.map(l=>tierOf(l.hit))};
   $("shareBtn").onclick=()=>shareCard(card,G.share,SITE_URL);
   if($("moreBtn"))$("moreBtn").onclick=()=>startGame("endless");
   if($("againBtn"))$("againBtn").onclick=()=>startGame(G.mode,{cat:G.cat});
@@ -1409,35 +1552,35 @@ function finish(already){
   if(G.mode==="daily"&&G.day===TODAY){dailySummary(G);lbEnd(G)}
 }
 // итог дня: счёт уходит на сервер (засчитывается первый), в ответ — место среди игроков и самый редкий ответ дня
-const plural=(n,a,b,c)=>{const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c};
+const plural=(n,a,b,c)=>{if(EN){const f=I18N_EN[a];return Array.isArray(f)?(n===1?f[0]:f[1]):tl(a)}const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c};
 function dailySummary(g){
-  apiPost("/daily",{pid:pid(),day:g.day,score:g.score,qs:g.qs}).then(r=>r.ok?r.json():null).then(d=>{
+  apiPost("/daily",{pid:pid(),lang:LANG,day:g.day,score:g.score,qs:g.qs}).then(r=>r.ok?r.json():null).then(d=>{
     const el=$("dSum");if(!d||!el||G!==g)return;const lines=[];
     const others=(d.players|0)-1;
-    if(others>=3)lines.push(`ты улетел выше ${Math.round((d.below|0)/others*100)}% игроков сегодня`);
-    else if(others>0)lines.push(`сегодня летали ${d.players} ${plural(d.players,"пилот","пилота","пилотов")} — ты среди первых`);
+    if(others>=3)lines.push(tl("ты улетел выше {p}% игроков сегодня",{p:Math.round((d.below|0)/others*100)}));
+    else if(others>0)lines.push(tl("сегодня летали {n} {w} — ты среди первых",{n:d.players,w:plural(d.players,"пилот","пилота","пилотов")}));
     // самый редкий: меньше всего выборов, при равенстве — самый редкий по спискам; только настоящие ответы
     let best=null;for(const r of d.rare||[]){if(!Array.isArray(r))continue;const[qid,label,n]=r,q=Qs[qid];if(!q||typeof label!=="string"||!(n>0))continue;
       const k=norm(label);if(!k||q.del.has(k))continue;const a=q.map.get(k),pr=a?a.pct:0;
       if(!best||n<best.n||(n===best.n&&pr<best.pr))best={q,label:a?a.label:label,n,pr}}
-    if(best)lines.push(`самый редкий ответ дня: «${esc(best.label)}» (${esc(best.q.q.toLowerCase())}) — ${best.n===1?"всего один раз":best.n+" "+plural(best.n,"раз","раза","раз")}`);
+    if(best)lines.push(tl("самый редкий ответ дня: {a} ({q}) — {n}",{a:qq(esc(best.label)),q:esc(best.q.q.toLowerCase()),n:best.n===1?tl("всего один раз"):best.n+" "+plural(best.n,"раз","раза","раз")}));
     if(lines.length)el.innerHTML=`<div class="dsum">${lines.map(l=>`<div>▲ ${l}</div>`).join("")}</div>`;
   }).catch(()=>{});
 }
 function tickNext(){const el=$("nextT");if(!el)return;const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const s=Math.floor((m-n)/1000);el.textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(v=>String(v).padStart(2,"0")).join(":");setTimeout(tickNext,1000)}
 function confetti(){const cols=["#ff4fd8","#ffd54a","#5ef38c","#5ff3ff","#c77dff"];let k=0;const iv=setInterval(()=>{for(let i=0;i<20;i++)spawn({x:rand(0,W),alt:world.cam+(H*world.anchor+10)/world.px,vx:rand(-60,60),vy:-rand(80,220),life:rand(2,3.5),ml:3.5,sz:rand(3,6),c:"spark",col:cols[i%5]});if(++k>25)clearInterval(iv)},80)}
-function updateStreak(){let s=0;for(let d=TODAY;d>0;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));if(v&&v.done)s++;else break}store.set("orb-streak",s)}
+function updateStreak(){let s=0;for(let d=TODAY;d>0;d--){const v=store.get(DK(dateOf(d)));if(v&&v.done)s++;else break}store.set("orb-streak",s)}
 G&&(G.cat=null);
 
 /* =================== КАРТОЧКА РЕЗУЛЬТАТА =================== */
 // 1080×1350 (4:5) — во весь экран в ленте Telegram и VK. Фон рисуется в 180×225 и растягивается без сглаживания — пиксели.
-const SITE="orbita.129-151-216-221.sslip.io",SITE_URL="https://"+SITE+"/";
+const SITE="orbita.129-151-216-221.sslip.io",SITE_URL="https://"+SITE+"/"+(EN?"?lang=en":"");
 const CARD_W=1080,CARD_H=1350,CPX=6;
-const CARD_LM=[[2,"пробил облака"],[11,"обогнал авиалайнеры"],[20,"вышел в стратосферу"],[39,"выше рекордного прыжка"],[50,"покинул стратосферу"],[80,"долетел до метеоров"],[100,"пересёк линию Кармана"],[181,"догнал «Восток-1»"],[250,"долетел до северного сияния"],[408,"долетел до МКС"],[540,"долетел до «Хаббла»"],[700,"вышел на орбиту"],[1000,"улетел за 1000 км"],[2000,"покинул низкую орбиту"],[6371,"поднялся на радиус Земли"],[20200,"долетел до GPS"],[35786,"вышел на геостационар"],[100000,"Земля размером с монету"],[384400,"долетел до Луны"],[1500000,"догнал телескоп «Уэбб»"],[55000000,"долетел до Марса"],[149600000,"долетел до Солнца"]];
-const cardLm=a=>{let s="ещё на стартовой площадке";for(const[k,t]of CARD_LM)if(a>=k)s=t;return s};
-const fmtKm=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
-const fmtDate=d=>[d.getDate(),d.getMonth()+1].map(v=>String(v).padStart(2,"0")).join(".")+"."+d.getFullYear();
-async function cardFonts(){try{await Promise.all([document.fonts.load('32px "Press Start 2P"',"ОРБИТА КМ 0123456789"),document.fonts.load('700 32px "JetBrains Mono"',"orbita.0123")]);await document.fonts.ready}catch(e){}}
+const CARD_LM=EN?[[2,"broke through the clouds"],[11,"passed the airliners"],[20,"reached the stratosphere"],[39,"beat the record skydive"],[50,"left the stratosphere"],[80,"reached the meteors"],[100,"crossed the Karman line"],[181,"caught up with Vostok 1"],[250,"reached the northern lights"],[408,"reached the ISS"],[540,"reached Hubble"],[700,"made it to orbit"],[1000,"flew past 1,000 km"],[2000,"left low Earth orbit"],[6371,"climbed one Earth radius"],[20200,"reached the GPS satellites"],[35786,"reached geostationary orbit"],[100000,"Earth is the size of a coin"],[384400,"reached the Moon"],[1500000,"caught up with the Webb telescope"],[55000000,"reached Mars"],[149600000,"reached the Sun"]]:[[2,"пробил облака"],[11,"обогнал авиалайнеры"],[20,"вышел в стратосферу"],[39,"выше рекордного прыжка"],[50,"покинул стратосферу"],[80,"долетел до метеоров"],[100,"пересёк линию Кармана"],[181,"догнал «Восток-1»"],[250,"долетел до северного сияния"],[408,"долетел до МКС"],[540,"долетел до «Хаббла»"],[700,"вышел на орбиту"],[1000,"улетел за 1000 км"],[2000,"покинул низкую орбиту"],[6371,"поднялся на радиус Земли"],[20200,"долетел до GPS"],[35786,"вышел на геостационар"],[100000,"Земля размером с монету"],[384400,"долетел до Луны"],[1500000,"догнал телескоп «Уэбб»"],[55000000,"долетел до Марса"],[149600000,"долетел до Солнца"]];
+const cardLm=a=>{let s=tl("ещё на стартовой площадке");for(const[k,t]of CARD_LM)if(a>=k)s=t;return s};
+const fmtKm=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,EN?",":" ");
+const fmtDate=d=>EN?d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase():[d.getDate(),d.getMonth()+1].map(v=>String(v).padStart(2,"0")).join(".")+"."+d.getFullYear();
+async function cardFonts(){try{await Promise.all([document.fonts.load('32px "Press Start 2P"',"ОРБИТА ORBIT КМ KM 0123456789"),document.fonts.load('700 32px "JetBrains Mono"',"orbita.0123")]);await document.fonts.ready}catch(e){}}
 function cardRocket(c,x,y,s,r){const ox=Math.round(x-4.5*s),oy=Math.round(y-ROCKET.length*s);
   const g=c.createRadialGradient(x,y+5*s,0,x,y+5*s,12*s);g.addColorStop(0,"rgba(255,170,60,.45)");g.addColorStop(1,"rgba(255,80,40,0)");c.fillStyle=g;c.fillRect(x-12*s,y-7*s,24*s,24*s);
   const cols=["#ff3d6e","#ff8a2e","#ffd54a","#fff6c9"],L=7*s;
@@ -1498,7 +1641,7 @@ async function makeCard(o){
   const rk=D?D.map((p,i)=>({x:i?.72:.28,y:.43+(i===lo?.05:0)})):[{x:.5,y:.43}];
   c.imageSmoothingEnabled=false;c.drawImage(cardScene(o.alt,Math.round(o.alt)*7+(o.title||"").length,rk),0,0,CARD_W,CARD_H);
   const v=c.createLinearGradient(0,0,0,240);v.addColorStop(0,"rgba(0,3,12,.55)");v.addColorStop(1,"rgba(0,3,12,0)");c.fillStyle=v;c.fillRect(0,0,CARD_W,240);
-  cardTxt(c,"ОРБИТА",60,104,48,"#5ff3ff",{al:"left",max:520});
+  cardTxt(c,tl("ОРБИТА"),60,104,48,"#5ff3ff",{al:"left",max:520});
   cardTxt(c,fmtDate(o.date||new Date()),1020,96,24,"#dcefff",{al:"right",max:400,blur:0});
   cardTxt(c,(o.title||"").toUpperCase(),60,170,32,"#ffd54a",{al:"left",max:960,blur:10});
   if(D){
@@ -1506,7 +1649,7 @@ async function makeCard(o){
     cardTxt(c,"VS",540,960,48,"#ff4fd8");
     D.forEach((p,i)=>{const x=i?810:270;
       cardTxt(c,p.name.toUpperCase(),x,890,32,p.win?"#ffd54a":"#eaf6ff",{max:400,blur:p.win?14:0});
-      cardTxt(c,fmtKm(p.score)+" КМ",x,975,56,"#ffffff",{max:420,glow:p.win?"#ffd54a":"#5ff3ff"});
+      cardTxt(c,fmtKm(p.score)+tl(" КМ"),x,975,56,"#ffffff",{max:420,glow:p.win?"#ffd54a":"#5ff3ff"});
       cardBadges(c,p.badges,x,1020,420,48)});
   }else{
     cardTxt(c,o.big,540,790,128,"#ffffff",{glow:"#5ff3ff"});
@@ -1514,27 +1657,27 @@ async function makeCard(o){
     cardBadges(c,o.badges||[],540,930,960,104);
   }
   c.fillStyle="rgba(2,6,20,.84)";c.fillRect(0,1236,CARD_W,114);c.fillStyle="rgba(95,243,255,.7)";c.fillRect(0,1236,CARD_W,4);
-  cardTxt(c,"А ТЫ УЛЕТИШЬ ВЫШЕ?",540,1288,24,"#ff4fd8",{blur:10});
+  cardTxt(c,tl("А ТЫ УЛЕТИШЬ ВЫШЕ?"),540,1288,24,"#ff4fd8",{blur:10});
   cardTxt(c,SITE,540,1332,34,"#5ff3ff",{mono:1,blur:8});
   return cv}
 let shareTok=null,shareURL=null;
 async function shareCard(o,text,url){
   SFX.click();const tok=shareTok={},full=text+"\n"+url;
-  modal(`<h3>${ico("share",14)} ПОДЕЛИТЬСЯ</h3><div class="cardPrev" id="cardPrev"><div class="next">РИСУЕМ КАРТОЧКУ…</div></div>
-   <div class="shBtns"><button class="btn hot" id="shSend" hidden>${ico("share",14)} ОТПРАВИТЬ</button><button class="btn" id="shDl" disabled>СКАЧАТЬ</button><button class="btn" id="shImg" hidden>КОПИРОВАТЬ КАРТИНКУ</button>
-   <button class="btn small" id="shTg">В TELEGRAM</button><button class="btn small" id="shVk">ВО ВКОНТАКТЕ</button><button class="btn small" id="shTxt">КОПИРОВАТЬ ТЕКСТ</button></div>
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+  modal(`<h3>${ico("share",14)} ${tl("ПОДЕЛИТЬСЯ")}</h3><div class="cardPrev" id="cardPrev"><div class="next">${tl("РИСУЕМ КАРТОЧКУ…")}</div></div>
+   <div class="shBtns"><button class="btn hot" id="shSend" hidden>${ico("share",14)} ${tl("ОТПРАВИТЬ")}</button><button class="btn" id="shDl" disabled>${tl("СКАЧАТЬ")}</button><button class="btn" id="shImg" hidden>${tl("КОПИРОВАТЬ КАРТИНКУ")}</button>
+   <button class="btn small" id="shTg">${tl("В TELEGRAM")}</button><button class="btn small" id="shVk">${EN?"X / TWITTER":"ВО ВКОНТАКТЕ"}</button><button class="btn small" id="shTxt">${tl("КОПИРОВАТЬ ТЕКСТ")}</button></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ЗАКРЫТЬ")}</button></div>`);
   $("shTxt").onclick=()=>{SFX.click();copy(full)};
   $("shTg").onclick=()=>{SFX.click();window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,"_blank","noopener")};
-  $("shVk").onclick=()=>{SFX.click();window.open(`https://vk.com/share.php?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,"_blank","noopener")};
+  $("shVk").onclick=()=>{SFX.click();window.open(EN?`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`:`https://vk.com/share.php?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,"_blank","noopener")};
   let blob;try{const cv=await makeCard(o);blob=await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("blob")),"image/png"))}
-  catch(e){if(shareTok===tok&&$("cardPrev"))$("cardPrev").innerHTML=`<div class="next">НЕ ПОЛУЧИЛОСЬ НАРИСОВАТЬ</div>`;return}
+  catch(e){if(shareTok===tok&&$("cardPrev"))$("cardPrev").innerHTML=`<div class="next">${tl("НЕ ПОЛУЧИЛОСЬ НАРИСОВАТЬ")}</div>`;return}
   if(shareTok!==tok||!$("cardPrev"))return;
   if(shareURL)URL.revokeObjectURL(shareURL);const u=shareURL=URL.createObjectURL(blob),name=`orbita-${Math.round(o.alt)}km.png`,file=new File([blob],name,{type:"image/png"});
-  $("cardPrev").innerHTML=`<img src="${u}" alt="карточка результата">`;
+  $("cardPrev").innerHTML=`<img src="${u}" alt="${tl("карточка результата")}">`;
   const dl=$("shDl");dl.disabled=false;dl.onclick=()=>{SFX.click();const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove()};
-  try{if(navigator.canShare&&navigator.canShare({files:[file]})){const b=$("shSend");b.hidden=false;b.onclick=()=>{SFX.click();navigator.share({files:[file],text:full}).catch(e=>{if(!e||e.name!=="AbortError")toast("НЕ ВЫШЛО ОТПРАВИТЬ")})}}}catch(e){}
-  if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){const b=$("shImg");b.hidden=false;b.onclick=()=>{SFX.click();navigator.clipboard.write([new ClipboardItem({"image/png":blob})]).then(()=>toast("КАРТИНКА СКОПИРОВАНА!"),()=>toast("НЕ УДАЛОСЬ СКОПИРОВАТЬ"))}}
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){const b=$("shSend");b.hidden=false;b.onclick=()=>{SFX.click();navigator.share({files:[file],text:full}).catch(e=>{if(!e||e.name!=="AbortError")toast(tl("НЕ ВЫШЛО ОТПРАВИТЬ"))})}}}catch(e){}
+  if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){const b=$("shImg");b.hidden=false;b.onclick=()=>{SFX.click();navigator.clipboard.write([new ClipboardItem({"image/png":blob})]).then(()=>toast(tl("КАРТИНКА СКОПИРОВАНА!")),()=>toast(tl("НЕ УДАЛОСЬ СКОПИРОВАТЬ")))}}
 }
 
 /* =================== ДУЭЛЬ =================== */
@@ -1550,19 +1693,19 @@ let duelES=null;
 function stopPoll(){clearInterval(pollT);pollT=null;if(duelES){duelES.close();duelES=null}}
 function startPoll(){stopPoll();const tick=()=>{if(!G||G.mode!=="duel")return stopPoll();duelGet(G.duel.code).then(d=>{if(!d||!G||G.mode!=="duel")return;G.duel.d=d;if(G.duel.view)renderDuel(d);else oppHud(d)}).catch(()=>{})};tick();pollT=setInterval(tick,15000);try{duelES=new EventSource(`${API}/duel/stream?code=${encodeURIComponent(G.duel.code)}`);duelES.addEventListener("ch",tick)}catch(e){}}
 function oppHud(d){const o=d.players.find(p=>p.slot!==d.me);show("opp",true);
-  if(!o){$("oppN").textContent="СОПЕРНИК";$("oppV").textContent="ЕЩЁ НЕ ЗАШЁЛ";return}
-  $("oppN").textContent=o.name.toUpperCase();$("oppV").textContent=`${o.score} КМ · ${o.done?"ФИНИШ":o.step+"/7"}`}
-function nickField(){return`<label>ТВОЙ НИК</label><input class="nick" id="nickIn" maxlength="16" placeholder="например, Гагарин" value="${esc(nickOf())}">`}
-function readNick(){const v=$("nickIn").value.trim().slice(0,16);if(!v){$("nickIn").focus();toast("ВВЕДИ НИК");return null}store.set("orb-nick",v);return v}
+  if(!o){$("oppN").textContent=tl("СОПЕРНИК");$("oppV").textContent=tl("ЕЩЁ НЕ ЗАШЁЛ");return}
+  $("oppN").textContent=o.name.toUpperCase();$("oppV").textContent=`${o.score}${tl(" КМ")} · ${o.done?tl("ФИНИШ"):o.step+"/7"}`}
+function nickField(){return`<label>${tl("ТВОЙ НИК")}</label><input class="nick" id="nickIn" maxlength="16" placeholder="${tl("например, Гагарин")}" value="${esc(nickOf())}">`}
+function readNick(){const v=$("nickIn").value.trim().slice(0,16);if(!v){$("nickIn").focus();toast(tl("ВВЕДИ НИК"));return null}store.set("orb-nick",v);return v}
 function duelMenu(){
-  const mine=(store.get("orb-duels")||[]).map(c=>{const s=store.get("orb-du-"+c)||{};return`<button class="btn small" data-code="${esc(c)}"><span>${ico("duel",14)} ${esc(c)}</span><small>${s.done?s.score+" км":s.log&&s.log.length?"не закончена":"не сыграна"}</small></button>`}).join("");
-  modal(`<h3>${ico("duel",14)} ДУЭЛЬ</h3><ul class="rules"><li>ОДИНАКОВЫЕ 7 ВОПРОСОВ ДЛЯ ДВОИХ.</li><li>ИГРАЙТЕ ВМЕСТЕ ИЛИ ПО ОЧЕРЕДИ — ССЫЛКА ПОКАЖЕТ ИТОГ.</li><li>КТО УЛЕТЕЛ ВЫШЕ — ТОТ ПОБЕДИЛ.</li></ul>${nickField()}
-   <div class="rowBtns" style="margin-top:12px"><button class="btn hot" id="dNew">${ico("duel",14)} СОЗДАТЬ ДУЭЛЬ</button></div>
-   <label>ИЛИ ВВЕДИ КОД ДРУГА</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="5" placeholder="КОД" style="flex:2;text-transform:uppercase"><button class="btn" id="dJoin" style="flex:1">ВОЙТИ</button></div>
-   ${mine?`<label>МОИ ДУЭЛИ</label><div class="mlist">${mine}</div>`:""}
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+  const mine=(store.get("orb-duels")||[]).map(c=>{const s=store.get("orb-du-"+c)||{};return`<button class="btn small" data-code="${esc(c)}"><span>${ico("duel",14)} ${esc(c)}</span><small>${s.done?s.score+tl(" км"):s.log&&s.log.length?tl("не закончена"):tl("не сыграна")}</small></button>`}).join("");
+  modal(`<h3>${ico("duel",14)} ${tl("ДУЭЛЬ")}</h3><ul class="rules"><li>${tl("ОДИНАКОВЫЕ 7 ВОПРОСОВ ДЛЯ ДВОИХ.")}</li><li>${tl("ИГРАЙТЕ ВМЕСТЕ ИЛИ ПО ОЧЕРЕДИ — ССЫЛКА ПОКАЖЕТ ИТОГ.")}</li><li>${tl("КТО УЛЕТЕЛ ВЫШЕ — ТОТ ПОБЕДИЛ.")}</li></ul>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn hot" id="dNew">${ico("duel",14)} ${tl("СОЗДАТЬ ДУЭЛЬ")}</button></div>
+   <label>${tl("ИЛИ ВВЕДИ КОД ДРУГА")}</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="5" placeholder="${tl("КОД")}" style="flex:2;text-transform:uppercase"><button class="btn" id="dJoin" style="flex:1">${tl("ВОЙТИ")}</button></div>
+   ${mine?`<label>${tl("МОИ ДУЭЛИ")}</label><div class="mlist">${mine}</div>`:""}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ЗАКРЫТЬ")}</button></div>`);
   $("dNew").onclick=duelCreate;
-  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{5}$/.test(c)){toast("КОД — 5 СИМВОЛОВ");return}if(!readNick())return;duelOpen(c)};
+  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{5}$/.test(c)){toast(tl("КОД — 5 СИМВОЛОВ"));return}if(!readNick())return;duelOpen(c)};
   $("dJoin").onclick=join;$("codeIn").onkeydown=e=>{if(e.key==="Enter")join()};
   $("mbox").querySelectorAll("[data-code]").forEach(b=>b.onclick=()=>duelOpen(b.dataset.code));
 }
@@ -1570,39 +1713,41 @@ async function duelCreate(){
   const nick=readNick();if(!nick)return;SFX.click();
   const qs=shuffle(Qs.map(q=>q.id),Math.random).slice(0,7),token=newToken();
   $("dNew").disabled=true;
-  try{const code=await rpc("orbita_duel_create",{p_qs:qs,p_name:nick,p_token:token});rememberDuel(code,token);duelShare(code,qs)}
-  catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");$("dNew").disabled=false}
+  try{const code=await rpc("orbita_duel_create",{p_qs:qs,p_name:nick,p_token:token,p_lang:LANG});rememberDuel(code,token);duelShare(code,qs)}
+  catch(e){toast(tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"));$("dNew").disabled=false}
 }
-function copy(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("СКОПИРОВАНО!"),()=>toast("НЕ УДАЛОСЬ СКОПИРОВАТЬ"))}
+function copy(txt){(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast(tl("СКОПИРОВАНО!")),()=>toast(tl("НЕ УДАЛОСЬ СКОПИРОВАТЬ")))}
 function duelShare(code,qs){
-  modal(`<h3>${ico("duel",14)} ДУЭЛЬ СОЗДАНА</h3><div class="sub" style="margin-top:0">отправь другу код или ссылку</div><div class="dcode">${esc(code)}</div><div class="dlink">${esc(duelLink(code))}</div>
-   <div class="rowBtns" style="margin-top:12px"><button class="btn" id="dCopy">${ico("share",14)} КОПИРОВАТЬ</button><button class="btn hot" id="dPlay">${ico("rocket",12)} ИГРАТЬ</button></div>`);
-  $("dCopy").onclick=()=>{SFX.click();copy(`Дуэль в «Орбите»! Кто улетит выше? Код ${code}\n${duelLink(code)}`)};
+  modal(`<h3>${ico("duel",14)} ${tl("ДУЭЛЬ СОЗДАНА")}</h3><div class="sub" style="margin-top:0">${tl("отправь другу код или ссылку")}</div><div class="dcode">${esc(code)}</div><div class="dlink">${esc(duelLink(code))}</div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn" id="dCopy">${ico("share",14)} ${tl("КОПИРОВАТЬ")}</button><button class="btn hot" id="dPlay">${ico("rocket",12)} ${tl("ИГРАТЬ")}</button></div>`);
+  $("dCopy").onclick=()=>{SFX.click();copy(tl("Дуэль в «Орбите»! Кто улетит выше? Код {c}",{c:code})+"\n"+duelLink(code))};
   $("dPlay").onclick=()=>{show("modal",false);startGame("duel",{code,qs})};
 }
 async function duelOpen(code){
   code=String(code).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5);
-  let d;try{d=await duelGet(code)}catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");return}
-  if(!d){toast("ДУЭЛЬ НЕ НАЙДЕНА");return}
+  let d;try{d=await duelGet(code)}catch(e){toast(tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"));return}
+  if(!d){toast(tl("ДУЭЛЬ НЕ НАЙДЕНА"));return}
+  // дуэль на другом языке: переключаемся на её язык и открываем заново
+  if((d.lang||"ru")!==LANG)return setLang(d.lang||"ru","duel",location.pathname+"?duel="+code);
   if(d.me!=null){show("modal",false);return startGame("duel",{code,qs:d.qs})}
   if(d.players.length>=2){show("modal",false);return duelSpectate(d)}
   const host=d.players[0];
   const go=async()=>{const nick=readNick();if(!nick)return;const token=newToken();
-    try{const slot=await rpc("orbita_duel_join",{p_code:code,p_name:nick,p_token:token});if(slot<0){toast("В ДУЭЛИ УЖЕ ДВОЕ");return duelOpen(code)}rememberDuel(code,token);show("modal",false);startGame("duel",{code,qs:d.qs})}
-    catch(e){toast("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ")}};
-  modal(`<h3>${ico("duel",14)} ВЫЗОВ НА ДУЭЛЬ</h3><div class="sub" style="margin-top:0"><b>${esc(host.name)}</b> вызывает тебя${host.done?` — уже улетел(а) на <b>${host.score} км</b>`:""}</div><div class="dcode">${esc(code)}</div>${nickField()}
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ПОТОМ</button><button class="btn hot" id="dAcc">${ico("rocket",12)} ПРИНЯТЬ</button></div>`);
+    try{const slot=await rpc("orbita_duel_join",{p_code:code,p_name:nick,p_token:token});if(slot<0){toast(tl("В ДУЭЛИ УЖЕ ДВОЕ"));return duelOpen(code)}rememberDuel(code,token);show("modal",false);startGame("duel",{code,qs:d.qs})}
+    catch(e){toast(tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"))}};
+  modal(`<h3>${ico("duel",14)} ${tl("ВЫЗОВ НА ДУЭЛЬ")}</h3><div class="sub" style="margin-top:0">${tl("{n} вызывает тебя",{n:`<b>${esc(host.name)}</b>`})}${host.done?tl(" — уже улетел(а) на {s}",{s:`<b>${host.score}${tl(" км")}</b>`}):""}</div><div class="dcode">${esc(code)}</div>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ПОТОМ")}</button><button class="btn hot" id="dAcc">${ico("rocket",12)} ${tl("ПРИНЯТЬ")}</button></div>`);
   $("dAcc").onclick=go;$("nickIn").onkeydown=e=>{if(e.key==="Enter")go()};
 }
 function duelSpectate(d){
-  stopPoll();G={mode:"duel",qs:d.qs,i:7,score:0,log:[],title:"ДУЭЛЬ "+d.code,duel:{code:d.code,d,view:true}};
-  enterGameView(true);show("opp",false);$("pipTxt").textContent="ДУЭЛЬ";renderDuel(d);startPoll();
+  stopPoll();G={mode:"duel",qs:d.qs,i:7,score:0,log:[],title:tl("ДУЭЛЬ {c}",{c:d.code}),duel:{code:d.code,d,view:true}};
+  enterGameView(true);show("opp",false);$("pipTxt").textContent=tl("ДУЭЛЬ");renderDuel(d);startPoll();
 }
 function duelEnd(already){
-  hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent="ЗАПУСК ЗАВЕРШЁН";show("opp",false);
+  hideAll();world.tierAT=0;world.idleFlame=.15;setHud();$("pipTxt").textContent=tl("ЗАПУСК ЗАВЕРШЁН");show("opp",false);
   G.duel.view=true;G.duel.fresh=!already;
   const s=store.get("orb-du-"+G.duel.code)||{};if(s.t&&s.log)duelPush(G.duel.code,s.t,s.log.length,s.score,s.log,true);
-  const e=$("end");e.innerHTML=`<h2>${ico("duel",14)} ${esc(G.title)}</h2><div class="dwin">СВЯЗЬ С ЦУПОМ…</div>`;show("end",true);
+  const e=$("end");e.innerHTML=`<h2>${ico("duel",14)} ${esc(G.title)}</h2><div class="dwin">${tl("СВЯЗЬ С ЦУПОМ…")}</div>`;show("end",true);
   duelQ.then(()=>{if(G&&G.mode==="duel")startPoll()});
 }
 function renderDuel(d){
@@ -1610,25 +1755,25 @@ function renderDuel(d){
   const both=!!(P[0]&&P[1]&&P[0].done&&P[1].done);
   const win=both?(P[0].score===P[1].score?-1:P[0].score>P[1].score?0:1):null;
   let head;
-  if(!both){const o=me!=null?P[1-me]:null;head=me==null?`<div class="dwin" style="color:var(--cy)">ДУЭЛЬ ЕЩЁ ИДЁТ</div>`:`<div class="dwin" style="color:var(--cy)">${!o?"ЖДЁМ СОПЕРНИКА":`${esc(o.name.toUpperCase())} ЕЩЁ ЛЕТИТ · ${o.step}/7`}</div><div class="next">${!o?"отправь другу ссылку — результат появится здесь":"результат обновится сам"}</div>`}
-  else if(win===-1)head=`<div class="dwin" style="color:var(--gold)">НИЧЬЯ!</div>`;
-  else if(me==null)head=`<div class="dwin rainbow">ПОБЕДИЛ(А) ${esc(P[win].name.toUpperCase())}</div>`;
-  else head=win===me?`<div class="dwin rainbow">ПОБЕДА!</div>`:`<div class="dwin" style="color:var(--hot)">ПОРАЖЕНИЕ</div>`;
-  const box=(p,sl)=>`<div class="hbox ${win===sl?"win":""}"><small>${p?esc(p.name.toUpperCase())+(sl===me?" · ТЫ":""):"???"}</small><b>${p?p.score+" КМ":"—"}</b></div>`;
-  const cell=(p,i)=>{if(!p)return`<td><small>—</small></td>`;const l=p.log[i];if(!l)return`<td><small>${p.step>i?"скрыто до финиша":"…"}</small></td>`;const T=TIERS[l.pts]||TIERS[0];return`<td>${tierBadge(T,14)} <small>${l.raw?esc(l.raw):"— время вышло"}</small><span class="dp" style="color:${T.c}">+${l.pts}</span></td>`};
+  if(!both){const o=me!=null?P[1-me]:null;head=me==null?`<div class="dwin" style="color:var(--cy)">${tl("ДУЭЛЬ ЕЩЁ ИДЁТ")}</div>`:`<div class="dwin" style="color:var(--cy)">${!o?tl("ЖДЁМ СОПЕРНИКА"):tl("{n} ЕЩЁ ЛЕТИТ · {s}/7",{n:esc(o.name.toUpperCase()),s:o.step})}</div><div class="next">${!o?tl("отправь другу ссылку — результат появится здесь"):tl("результат обновится сам")}</div>`}
+  else if(win===-1)head=`<div class="dwin" style="color:var(--gold)">${tl("НИЧЬЯ!")}</div>`;
+  else if(me==null)head=`<div class="dwin rainbow">${tl("ПОБЕДИЛ(А) {n}",{n:esc(P[win].name.toUpperCase())})}</div>`;
+  else head=win===me?`<div class="dwin rainbow">${tl("ПОБЕДА!")}</div>`:`<div class="dwin" style="color:var(--hot)">${tl("ПОРАЖЕНИЕ")}</div>`;
+  const box=(p,sl)=>`<div class="hbox ${win===sl?"win":""}"><small>${p?esc(p.name.toUpperCase())+(sl===me?tl(" · ТЫ"):""):"???"}</small><b>${p?p.score+tl(" КМ"):"—"}</b></div>`;
+  const cell=(p,i)=>{if(!p)return`<td><small>—</small></td>`;const l=p.log[i];if(!l)return`<td><small>${p.step>i?tl("скрыто до финиша"):"…"}</small></td>`;const T=TIERS[l.pts]||TIERS[0];return`<td>${tierBadge(T,14)} <small>${l.raw?esc(l.raw):tl("— время вышло")}</small><span class="dp" style="color:${T.c}">+${l.pts}</span></td>`};
   const rows=d.qs.map((qid,i)=>`<tr class="dq"><td colspan="2">${i+1}. ${esc(Qs[qid]?Qs[qid].q:"?")}</td></tr><tr>${cell(P[0],i)}${cell(P[1],i)}</tr>`).join("");
   const e=$("end");const keep=e.scrollTop;
-  e.innerHTML=`<h2>${ico("duel",14)} ДУЭЛЬ ${esc(d.code)}</h2><div class="dvs">${box(P[0],0)}<span>VS</span>${box(P[1],1)}</div>${head}
+  e.innerHTML=`<h2>${ico("duel",14)} ${tl("ДУЭЛЬ {c}",{c:esc(d.code)})}</h2><div class="dvs">${box(P[0],0)}<span>VS</span>${box(P[1],1)}</div>${head}
    <table class="dt">${rows}</table>
-   ${both?`<div class="rowBtns" style="margin-top:16px"><button class="btn hot" id="dShare">${ico("share",14)} ПОДЕЛИТЬСЯ</button></div>`:""}
-   <div class="rowBtns" style="margin-top:${both?8:16}px"><button class="btn" id="dLink">${ico("share",14)} ССЫЛКА</button><button class="btn hot" id="dAgain">${ico("duel",14)} НОВАЯ ДУЭЛЬ</button></div>
-   <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} НА ГЛАВНУЮ</button></div>`;
+   ${both?`<div class="rowBtns" style="margin-top:16px"><button class="btn hot" id="dShare">${ico("share",14)} ${tl("ПОДЕЛИТЬСЯ")}</button></div>`:""}
+   <div class="rowBtns" style="margin-top:${both?8:16}px"><button class="btn" id="dLink">${ico("share",14)} ${tl("ССЫЛКА")}</button><button class="btn hot" id="dAgain">${ico("duel",14)} ${tl("НОВАЯ ДУЭЛЬ")}</button></div>
+   <div class="rowBtns"><button class="btn small" id="homeBtn">${ico("home",12)} ${tl("НА ГЛАВНУЮ")}</button></div>`;
   e.scrollTop=keep;show("end",true);
-  $("dLink").onclick=()=>{SFX.click();copy(both?`Дуэль в «Орбите»: ${P[0].name} ${P[0].score} км vs ${P[1].name} ${P[1].score} км\n${duelLink(d.code)}`:`Дуэль в «Орбите»! Кто улетит выше? Код ${d.code}\n${duelLink(d.code)}`)};
+  $("dLink").onclick=()=>{SFX.click();copy((both?tl("Дуэль в «Орбите»: {a} {x} км vs {b} {y} км",{a:P[0].name,x:P[0].score,b:P[1].name,y:P[1].score}):tl("Дуэль в «Орбите»! Кто улетит выше? Код {c}",{c:d.code}))+"\n"+duelLink(d.code))};
   $("dAgain").onclick=()=>{SFX.click();duelMenu()};$("homeBtn").onclick=goHome;
-  if(both)$("dShare").onclick=()=>shareCard({alt:Math.max(P[0].score,P[1].score),title:"ДУЭЛЬ "+d.code,head:win===-1?"НИЧЬЯ!":"ПОБЕДА: "+P[win].name.toUpperCase(),
+  if(both)$("dShare").onclick=()=>shareCard({alt:Math.max(P[0].score,P[1].score),title:tl("ДУЭЛЬ {c}",{c:d.code}),head:win===-1?tl("НИЧЬЯ!"):tl("ПОБЕДА: {n}",{n:P[win].name.toUpperCase()}),
     duel:P.map((p,sl)=>({name:p.name,score:p.score,win:win===sl,badges:d.qs.map((q,i)=>TIERS[(p.log[i]||{}).pts]||TIERS[0])}))},
-    `Дуэль в «Орбите»: ${P[0].name} ${P[0].score} км vs ${P[1].name} ${P[1].score} км`,duelLink(d.code));
+    tl("Дуэль в «Орбите»: {a} {x} км vs {b} {y} км",{a:P[0].name,x:P[0].score,b:P[1].name,y:P[1].score}),duelLink(d.code));
   if(both){stopPoll();if(!G.duel.shown){G.duel.shown=1;if(me!=null&&G.duel.fresh!==false){if(win===me){SFX.win();confetti()}else SFX.tier(30)}}}
 }
 
@@ -1648,23 +1793,23 @@ async function roomCall(fn,args){
   return d;
 }
 const roomSaved=()=>{const s=store.get("orb-room");return s&&s.code&&s.t&&Date.now()-(s.ts||0)<2*3600e3?s:null};
-const catName=c=>c&&CATS[c]?CATS[c].toUpperCase():"ВСЕ ТЕМЫ";
-function roomSetHTML(n,cat,on){return`<label>ВОПРОСОВ</label><div class="seg" id="rN">${ROOM_NS.map(k=>`<button class="btn small ${k===n?"on":""}" data-n="${k}" ${on?"":"disabled"}>${k}</button>`).join("")}</div>
-  <label>ТЕМА</label><select class="nick" id="rCat" ${on?"":"disabled"}><option value="">ВСЕ ТЕМЫ</option>${Object.keys(CATS).map(c=>`<option value="${c}" ${c===cat?"selected":""}>${CATS[c].toUpperCase()}</option>`).join("")}</select>`}
+const catName=c=>c&&CATS[c]?CATS[c].toUpperCase():tl("ВСЕ ТЕМЫ");
+function roomSetHTML(n,cat,on){return`<label>${tl("ВОПРОСОВ")}</label><div class="seg" id="rN">${ROOM_NS.map(k=>`<button class="btn small ${k===n?"on":""}" data-n="${k}" ${on?"":"disabled"}>${k}</button>`).join("")}</div>
+  <label>${tl("ТЕМА")}</label><select class="nick" id="rCat" ${on?"":"disabled"}><option value="">${tl("ВСЕ ТЕМЫ")}</option>${Object.keys(CATS).map(c=>`<option value="${c}" ${c===cat?"selected":""}>${CATS[c].toUpperCase()}</option>`).join("")}</select>`}
 function roomMenu(){
   const sv=roomSaved();let n=7;
-  modal(`<h3>${ico("party",14)} КОМНАТА</h3><ul class="rules"><li>ИГРА ДЛЯ КОМПАНИИ — ДО 30 ЧЕЛОВЕК.</li><li>ВСЕ ОТВЕЧАЮТ НА ОДИН ВОПРОС ОДНОВРЕМЕННО.</li><li>ПОСЛЕ ВОПРОСА — ОТВЕТЫ ВСЕХ И ТАБЛИЦА. УНИКАЛЬНЫЕ ОТВЕТЫ СВЕТЯТСЯ.</li></ul>
-   ${sv?`<div class="rowBtns"><button class="btn" id="rBack">${ico("party",14)} ВЕРНУТЬСЯ В ${esc(sv.code)}</button></div>`:""}
+  modal(`<h3>${ico("party",14)} ${tl("КОМНАТА")}</h3><ul class="rules"><li>${tl("ИГРА ДЛЯ КОМПАНИИ — ДО 30 ЧЕЛОВЕК.")}</li><li>${tl("ВСЕ ОТВЕЧАЮТ НА ОДИН ВОПРОС ОДНОВРЕМЕННО.")}</li><li>${tl("ПОСЛЕ ВОПРОСА — ОТВЕТЫ ВСЕХ И ТАБЛИЦА. УНИКАЛЬНЫЕ ОТВЕТЫ СВЕТЯТСЯ.")}</li></ul>
+   ${sv?`<div class="rowBtns"><button class="btn" id="rBack">${ico("party",14)} ${tl("ВЕРНУТЬСЯ В {c}",{c:esc(sv.code)})}</button></div>`:""}
    ${nickField()}<div id="rSet">${roomSetHTML(n,"",true)}</div>
-   <div class="rowBtns" style="margin-top:14px"><button class="btn hot" id="rNew">${ico("party",14)} СОЗДАТЬ КОМНАТУ</button></div>
-   <label>ИЛИ ВВЕДИ КОД КОМНАТЫ</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="4" placeholder="КОД" style="flex:2;text-transform:uppercase" autocapitalize="characters"><button class="btn" id="rJoin" style="flex:1">ВОЙТИ</button></div>
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+   <div class="rowBtns" style="margin-top:14px"><button class="btn hot" id="rNew">${ico("party",14)} ${tl("СОЗДАТЬ КОМНАТУ")}</button></div>
+   <label>${tl("ИЛИ ВВЕДИ КОД КОМНАТЫ")}</label><div class="rowBtns" style="margin-top:0"><input class="nick" id="codeIn" maxlength="4" placeholder="${tl("КОД")}" style="flex:2;text-transform:uppercase" autocapitalize="characters"><button class="btn" id="rJoin" style="flex:1">${tl("ВОЙТИ")}</button></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ЗАКРЫТЬ")}</button></div>`);
   const seg=$("rN");seg.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{SFX.click();n=+b.dataset.n;seg.querySelectorAll("[data-n]").forEach(x=>x.classList.toggle("on",x===b))});
   if(sv)$("rBack").onclick=()=>{SFX.click();roomOpen(sv.code)};
   $("rNew").onclick=async()=>{const nick=readNick();if(!nick)return;SFX.click();const token=newToken();$("rNew").disabled=true;
-    try{const d=await roomCall("create",{name:nick,token,n,cat:$("rCat").value||null});roomEnter(d.code,token,d.id,d.state,null)}
-    catch(e){toast(e.status===429||e.status===503?"СЛИШКОМ МНОГО КОМНАТ — ПОДОЖДИ":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");$("rNew").disabled=false}};
-  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{4}$/.test(c)){toast("КОД — 4 СИМВОЛА");return}if(!readNick())return;roomOpen(c,true)};
+    try{const d=await roomCall("create",{name:nick,token,n,cat:$("rCat").value||null,lang:LANG});roomEnter(d.code,token,d.id,d.state,null)}
+    catch(e){toast(e.status===429||e.status===503?tl("СЛИШКОМ МНОГО КОМНАТ — ПОДОЖДИ"):tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"));$("rNew").disabled=false}};
+  const join=()=>{const c=$("codeIn").value.trim().toUpperCase();if(!/^[A-Z0-9]{4}$/.test(c)){toast(tl("КОД — 4 СИМВОЛА"));return}if(!readNick())return;roomOpen(c,true)};
   $("rJoin").onclick=join;$("codeIn").onkeydown=e=>{if(e.key==="Enter")join()};
 }
 const urlClear=()=>{if(/[?&]room=/.test(location.search))history.replaceState(null,"",location.pathname)};
@@ -1673,16 +1818,18 @@ async function roomOpen(code,direct){
   code=String(code).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4);
   const sv=store.get("orb-room");let d;
   try{d=await roomCall("state",{code,token:sv&&sv.code===code?sv.t:null})}
-  catch(e){toast(e.status===404?"КОМНАТА НЕ НАЙДЕНА":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ");if(e.status===404&&sv&&sv.code===code)store.set("orb-room",null);urlClear();return}
+  catch(e){toast(e.status===404?tl("КОМНАТА НЕ НАЙДЕНА"):tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"));if(e.status===404&&sv&&sv.code===code)store.set("orb-room",null);urlClear();return}
+  // комната на другом языке: переключаемся на её язык и открываем заново
+  if((d.state.lang||"ru")!==LANG)return setLang(d.state.lang||"ru","room",location.pathname+"?room="+code);
   if(d.id)return roomEnter(code,sv.t,d.id,d.state,d.mine);
   const s=d.state,host=s.players.find(p=>p.id===s.host);
   const go=async()=>{const nick=readNick();if(!nick)return;SFX.click();const token=newToken();
-    try{const j=await roomCall("join",{code,name:nick,token});if(j.error==="full"){toast("КОМНАТА ЗАПОЛНЕНА");return}roomEnter(code,token,j.id,j.state,null)}
-    catch(e){toast(e.status===404?"КОМНАТА НЕ НАЙДЕНА":"НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ")}};
+    try{const j=await roomCall("join",{code,name:nick,token});if(j.error==="full"){toast(tl("КОМНАТА ЗАПОЛНЕНА"));return}roomEnter(code,token,j.id,j.state,null)}
+    catch(e){toast(e.status===404?tl("КОМНАТА НЕ НАЙДЕНА"):tl("НЕТ СВЯЗИ — ПОПРОБУЙ ЕЩЁ"))}};
   if(direct&&$("nickIn")&&$("nickIn").value.trim())return go();
-  const what=s.phase==="lobby"?"собирает экипаж":s.phase==="end"?"игра окончена — ждём новую":`идёт вопрос ${s.round+1} из ${s.total} — войдёшь со следующего`;
-  modal(`<h3>${ico("party",14)} ЗОВУТ В КОМНАТУ</h3><div class="sub" style="margin-top:0">${host?`<b>${esc(host.name)}</b> `:""}${what} · в экипаже ${s.players.length}/30</div><div class="dcode">${esc(code)}</div>${nickField()}
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="rLater">ПОТОМ</button><button class="btn hot" id="rAcc">${ico("rocket",12)} ВОЙТИ</button></div>`);
+  const what=s.phase==="lobby"?tl("собирает экипаж"):s.phase==="end"?tl("игра окончена — ждём новую"):tl("идёт вопрос {n} из {m} — войдёшь со следующего",{n:s.round+1,m:s.total});
+  modal(`<h3>${ico("party",14)} ${tl("ЗОВУТ В КОМНАТУ")}</h3><div class="sub" style="margin-top:0">${host?`<b>${esc(host.name)}</b> `:""}${what} · ${tl("в экипаже")} ${s.players.length}/30</div><div class="dcode">${esc(code)}</div>${nickField()}
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="rLater">${tl("ПОТОМ")}</button><button class="btn hot" id="rAcc">${ico("rocket",12)} ${tl("ВОЙТИ")}</button></div>`);
   $("rAcc").onclick=go;$("nickIn").onkeydown=e=>{if(e.key==="Enter")go()};$("rLater").onclick=()=>{show("modal",false);urlClear()};
 }
 function roomEnter(code,t,id,st,mine){
@@ -1690,7 +1837,7 @@ function roomEnter(code,t,id,st,mine){
   store.set("orb-room",{code,t,id,ts:Date.now()});
   history.replaceState(null,"",location.pathname+"?room="+code);
   R={code,t,id,v:-1,st:null,key:"",es:null,mine:mine||null,tick:null,wasIn:-1,shownEnd:false,seen:new Set()};
-  G={mode:"room",qs:[],i:0,score:0,log:[],title:"КОМНАТА "+code};
+  G={mode:"room",qs:[],i:0,score:0,log:[],title:tl("КОМНАТА {c}",{c:code})};
   show("home",false);hideAll();
   roomApply(st);roomListen();
 }
@@ -1705,16 +1852,16 @@ function roomListen(){
 async function roomResync(reopen){
   const r=R;if(!r)return;
   try{const d=await roomCall("state",{code:r.code,token:r.t});if(R!==r)return;
-    if(!d.id)return roomGone("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ");
+    if(!d.id)return roomGone(tl("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ"));
     if(d.mine)r.mine=d.mine;roomApply(d.state);if(reopen||!r.es||r.es.readyState===2)roomListen()}
-  catch(e){if(R!==r)return;if(e.status===404)return roomGone("КОМНАТА ЗАКРЫЛАСЬ");setTimeout(()=>{if(R===r)roomResync(true)},5000)}
+  catch(e){if(R!==r)return;if(e.status===404)return roomGone(tl("КОМНАТА ЗАКРЫЛАСЬ"));setTimeout(()=>{if(R===r)roomResync(true)},5000)}
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&R)roomResync(false)});
 function roomGone(msg){toast(msg);store.set("orb-room",null);roomStop();goHome()}
 function roomStop(keepUrl){
   if(!R)return;const r=R;R=null;
   if(r.es)r.es.close();clearInterval(r.tick);stopClock();
-  show("opp",false);$("hScoreL").textContent="СЧЁТ";
+  show("opp",false);$("hScoreL").textContent=tl("СЧЁТ");
   if(!keepUrl)urlClear();
 }
 function roomLeave(){const r=R;if(!r)return;SFX.click();roomCall("leave",{code:r.code,token:r.t}).catch(()=>{});store.set("orb-room",null);roomStop();goHome()}
@@ -1725,7 +1872,7 @@ function roomApply(s){
   const r=R;if(!r||!s||s.code!==r.code||s.v<r.v)return;
   r.v=s.v;r.st=s;
   const me=s.players.find(p=>p.id===r.id);
-  if(!me)return roomGone("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ");
+  if(!me)return roomGone(tl("ТЕБЯ БОЛЬШЕ НЕТ В КОМНАТЕ"));
   const key=s.phase+":"+s.round;
   // перерисовываем панель, только если на ней что-то поменялось (иначе анимации начинаются заново)
   const sig=JSON.stringify([s.host,s.n,s.cat,s.players.map(p=>[p.id,p.name,p.score,s.phase==="lobby"?p.on:0])]);
@@ -1740,16 +1887,16 @@ function roomApply(s){
 function roomHud(){
   const s=R.st,me=meP();if(!s||!me)return;
   const n=s.total;$("pipRow").innerHTML=Array.from({length:n},(_,i)=>{const l=G.log[i];const T=l?TIERS[l.pts]||TIERS[0]:null;return`<i class="${i===s.round&&s.phase==="q"?"cur":""}" style="${T?`background:${T.c};border-color:${T.c};box-shadow:0 0 8px ${T.c}`:""}"></i>`}).join("");
-  $("pipTxt").textContent=s.phase==="end"?"ИТОГИ КОМНАТЫ":`ВОПРОС ${Math.max(1,s.round+1)} ИЗ ${n}`;
-  $("hScoreL").textContent="МЕСТО";$("scoreV").textContent=`${placeOf(s,R.id)}/${s.players.length}`;
-  if(s.phase==="q"){const el=s.players.filter(p=>!p.late&&(p.on||p.ans));$("oppN").textContent=`КОМНАТА ${s.code}`;$("oppV").textContent=`ОТВЕТИЛИ ${el.filter(p=>p.ans).length}/${el.length}`;show("opp",true)}
+  $("pipTxt").textContent=s.phase==="end"?tl("ИТОГИ КОМНАТЫ"):tl("ВОПРОС {n} ИЗ {m}",{n:Math.max(1,s.round+1),m:n});
+  $("hScoreL").textContent=tl("МЕСТО");$("scoreV").textContent=`${placeOf(s,R.id)}/${s.players.length}`;
+  if(s.phase==="q"){const el=s.players.filter(p=>!p.late&&(p.on||p.ans));$("oppN").textContent=tl("КОМНАТА {c}",{c:s.code});$("oppV").textContent=tl("ОТВЕТИЛИ {a}/{b}",{a:el.filter(p=>p.ans).length,b:el.length});show("opp",true)}
   else show("opp",false);
 }
 function roomView(hud){
   show("home",false);show("hud",hud);hideAll();
   world.pxT=hud?pxGame():pxHome();world.anchorT=hud?.74:.72;world.idleFlame=hud?.25:0;world.tierAT=0;world.tierBase=null;
   if(!world.anim){world.alt=G.score;world.cam=G.score}
-  $("altV").textContent=G.score+" км";
+  $("altV").textContent=G.score+tl(" км");
 }
 function roomLobby(){
   const s=R.st,me=meP(),host=s.host===R.id;
@@ -1758,53 +1905,53 @@ function roomLobby(){
   roomView(false);
   const hostP=s.players.find(p=>p.id===s.host);
   const e=$("end");e.dataset.v="lobby";const keep=e.scrollTop;
-  e.innerHTML=`<h2>${ico("party",14)} КОМНАТА · ЛОББИ</h2><div class="dcode">${esc(s.code)}</div><div class="dlink">${esc(roomLink(s.code))}</div>
-   <div class="rowBtns"><button class="btn small" id="rCopy">${ico("share",14)} ПОЗВАТЬ ДРУЗЕЙ</button></div>
-   ${host?`<div id="rSet">${roomSetHTML(s.n,s.cat,true)}</div>`:`<div class="rset" style="margin-top:14px">${s.n} ВОПРОСОВ · ${esc(catName(s.cat))}</div>`}
-   <span class="rlab">ЭКИПАЖ · ${s.players.length}/30</span>
-   <div class="plist">${s.players.map(p=>`<span class="${p.id===R.id?"me":""} ${p.on?"":"off"} ${R.seen.has(p.id)?"":"nw"}">${p.id===s.host?ico("star",10):""}${esc(p.name.toUpperCase())}${p.id===R.id?" · ТЫ":""}</span>`).join("")}</div>
-   ${host?`<div style="margin-top:18px"><button class="btn big" id="rStart">▲ СТАРТ ▲</button></div><div class="next">${s.players.length<2?"можно и одному, но вместе веселее — отправь ссылку":"новые игроки могут зайти и во время игры"}</div>`
-     :`<div class="next" style="margin-top:18px">ЖДЁМ, КОГДА ${esc((hostP?hostP.name:"ХОСТ").toUpperCase())} НАЖМЁТ СТАРТ</div>`}
-   <div class="rowBtns" style="margin-top:14px"><button class="btn small" id="rLeave">${ico("home",12)} ВЫЙТИ ИЗ КОМНАТЫ</button></div>`;
+  e.innerHTML=`<h2>${ico("party",14)} ${tl("КОМНАТА · ЛОББИ")}</h2><div class="dcode">${esc(s.code)}</div><div class="dlink">${esc(roomLink(s.code))}</div>
+   <div class="rowBtns"><button class="btn small" id="rCopy">${ico("share",14)} ${tl("ПОЗВАТЬ ДРУЗЕЙ")}</button></div>
+   ${host?`<div id="rSet">${roomSetHTML(s.n,s.cat,true)}</div>`:`<div class="rset" style="margin-top:14px">${s.n} ${tl("ВОПРОСОВ")} · ${esc(catName(s.cat))}</div>`}
+   <span class="rlab">${tl("ЭКИПАЖ")} · ${s.players.length}/30</span>
+   <div class="plist">${s.players.map(p=>`<span class="${p.id===R.id?"me":""} ${p.on?"":"off"} ${R.seen.has(p.id)?"":"nw"}">${p.id===s.host?ico("star",10):""}${esc(p.name.toUpperCase())}${p.id===R.id?tl(" · ТЫ"):""}</span>`).join("")}</div>
+   ${host?`<div style="margin-top:18px"><button class="btn big" id="rStart">${tl("▲ СТАРТ ▲")}</button></div><div class="next">${s.players.length<2?tl("можно и одному, но вместе веселее — отправь ссылку"):tl("новые игроки могут зайти и во время игры")}</div>`
+     :`<div class="next" style="margin-top:18px">${tl("ЖДЁМ, КОГДА {n} НАЖМЁТ СТАРТ",{n:esc((hostP?hostP.name:tl("ХОСТ")).toUpperCase())})}</div>`}
+   <div class="rowBtns" style="margin-top:14px"><button class="btn small" id="rLeave">${ico("home",12)} ${tl("ВЫЙТИ ИЗ КОМНАТЫ")}</button></div>`;
   s.players.forEach(p=>R.seen.add(p.id));
   e.scrollTop=keep;show("end",true);
-  $("rCopy").onclick=()=>{SFX.click();copy(`Залетай ко мне в комнату в «Орбите»! Код ${s.code}\n${roomLink(s.code)}`)};
+  $("rCopy").onclick=()=>{SFX.click();copy(tl("Залетай ко мне в комнату в «Орбите»! Код {c}",{c:s.code})+"\n"+roomLink(s.code))};
   $("rLeave").onclick=roomLeave;
   if(host){
-    $("rN").querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{SFX.click();roomCall("settings",{code:R.code,token:R.t,n:+b.dataset.n}).then(d=>roomApply(d.state)).catch(()=>toast("НЕ ВЫШЛО"))});
-    $("rCat").onchange=()=>roomCall("settings",{code:R.code,token:R.t,cat:$("rCat").value||null}).then(d=>roomApply(d.state)).catch(()=>toast("НЕ ВЫШЛО"));
-    $("rStart").onclick=async()=>{ac();SFX.click();$("rStart").disabled=true;try{const d=await roomCall("start",{code:R.code,token:R.t});roomApply(d.state)}catch(x){toast("НЕ ВЫШЛО — ЕЩЁ РАЗ");if($("rStart"))$("rStart").disabled=false}};
+    $("rN").querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{SFX.click();roomCall("settings",{code:R.code,token:R.t,n:+b.dataset.n}).then(d=>roomApply(d.state)).catch(()=>toast(tl("НЕ ВЫШЛО")))});
+    $("rCat").onchange=()=>roomCall("settings",{code:R.code,token:R.t,cat:$("rCat").value||null}).then(d=>roomApply(d.state)).catch(()=>toast(tl("НЕ ВЫШЛО")));
+    $("rStart").onclick=async()=>{ac();SFX.click();$("rStart").disabled=true;try{const d=await roomCall("start",{code:R.code,token:R.t});roomApply(d.state)}catch(x){toast(tl("НЕ ВЫШЛО — ЕЩЁ РАЗ"));if($("rStart"))$("rStart").disabled=false}};
   }
 }
 function roomQ(){
   const s=R.st,me=meP(),q=Qs[s.qid];
   G.i=s.round;G.locked=false;G.checking=false;G.score=me.score;R.panel=false;R.wasIn=me.late?-1:s.round;
   world.anim=null;world.thrust=0;roomView(true);roomHud();
-  if(!q){$("qn").textContent="";$("qt").textContent="ОБНОВИ СТРАНИЦУ — У ТЕБЯ СТАРАЯ ВЕРСИЯ ИГРЫ";show("pcard",true);return}
+  if(!q){$("qn").textContent="";$("qt").textContent=tl("ОБНОВИ СТРАНИЦУ — У ТЕБЯ СТАРАЯ ВЕРСИЯ ИГРЫ");show("pcard",true);return}
   loadWD(q.id);
-  $("qn").textContent=`КОМНАТА ${s.code} · ВОПРОС ${s.round+1} ИЗ ${s.total}`;
+  $("qn").textContent=`${tl("КОМНАТА {c}",{c:s.code})} · ${tl("ВОПРОС {n} ИЗ {m}",{n:s.round+1,m:s.total})}`;
   const qt=$("qt");qt.textContent="";qt.classList.add("typed");
   const card=$("pcard");card.classList.remove("out","in");void card.offsetWidth;card.classList.add("in");show("pcard",true);
   let k=0;const txt=q.q;const ty=setInterval(()=>{if(!R||R.st!==s&&R.st.round!==s.round){clearInterval(ty);return}qt.textContent=txt.slice(0,++k);if(k%2===0)tone(900+Math.random()*200,.02,"square",.02);if(k>=txt.length){clearInterval(ty);qt.classList.remove("typed")}},28);
   const qh=$("qh");
-  if(me.late){qh.textContent="▲ ТЫ ЗАШЁЛ ПОСРЕДИ ВОПРОСА — ОТВЕЧАЕШЬ СО СЛЕДУЮЩЕГО ▲";G.locked=true}
-  else{qh.textContent="▲ редкие ответы летят выше ▲";$("ans").value="";$("ans").disabled=false;show("bar",true);setTimeout(()=>$("ans").focus(),50)}
+  if(me.late){qh.textContent=tl("▲ ТЫ ЗАШЁЛ ПОСРЕДИ ВОПРОСА — ОТВЕЧАЕШЬ СО СЛЕДУЮЩЕГО ▲");G.locked=true}
+  else{qh.textContent=tl("▲ редкие ответы летят выше ▲");$("ans").value="";$("ans").disabled=false;show("bar",true);setTimeout(()=>$("ans").focus(),50)}
   if(R.mine&&R.mine.round===s.round)roomLocked(R.mine.raw,true);
   // обратный отсчёт и часы — по времени сервера, у всех одинаково
   countT.forEach(clearTimeout);countT=[];
   const pop=(txt,f)=>{const c=$("count");c.textContent=txt;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");show("count",true);f()};
   const toStart=s.startAt-srvNow();
   [3,2,1].forEach((n,i)=>{const at=toStart-(3-i)*700;if(at>0)countT.push(setTimeout(()=>pop(n,SFX.beep),at))});
-  if(toStart>0)countT.push(setTimeout(()=>pop("ПОЕХАЛИ!",SFX.go),toStart));
+  if(toStart>0)countT.push(setTimeout(()=>pop(tl("ПОЕХАЛИ!"),SFX.go),toStart));
   const T=25000;let lastSec=99;setRing(Math.min(1,(s.deadline-srvNow())/T),Math.min(25,Math.ceil((s.deadline-srvNow())/1000)));
   clearInterval(clock);clock=setInterval(()=>{if(!R||R.st.phase!=="q"||R.st.round!==s.round){clearInterval(clock);return}
     const left=Math.max(0,s.deadline-srvNow()),sec=Math.min(25,Math.ceil(left/1000));setRing(Math.min(1,left/T),sec);
     if(sec!==lastSec){lastSec=sec;if(sec<=5&&sec>0&&!G.locked)SFX.tick()}
-    if(left<=0){clearInterval(clock);if(!G.locked){G.locked=true;$("ans").disabled=true;$("qh").textContent="▲ ВРЕМЯ ВЫШЛО — ЖДЁМ ИТОГИ ▲"}}},100);
+    if(left<=0){clearInterval(clock);if(!G.locked){G.locked=true;$("ans").disabled=true;$("qh").textContent=tl("▲ ВРЕМЯ ВЫШЛО — ЖДЁМ ИТОГИ ▲")}}},100);
 }
 function roomLocked(raw,quiet){
   G.locked=true;const a=$("ans");a.value=raw;a.disabled=true;
-  $("qh").innerHTML=`<span style="color:var(--cy)">✓ ОТВЕТ ПРИНЯТ — ЖДЁМ ОСТАЛЬНЫХ</span>`;
+  $("qh").innerHTML=`<span style="color:var(--cy)">${tl("✓ ОТВЕТ ПРИНЯТ — ЖДЁМ ОСТАЛЬНЫХ")}</span>`;
   if(!quiet)tone(660,.08,"square",.05),tone(990,.12,"square",.04,0,.06);
 }
 async function roomSubmit(){
@@ -1812,17 +1959,17 @@ async function roomSubmit(){
   const raw=$("ans").value.trim();if(!raw)return;const q=Qs[s.qid];if(!q)return;
   if(srvNow()>s.deadline+1000)return;
   const hit=findAns(q,raw)||freeAns(q,raw);
-  if(!hit&&!aiWorthy(q,raw)){err(`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);$("ans").select();return}
+  if(!hit&&!aiWorthy(q,raw)){err(tl("«{a}» — не засчитано. Ещё вариант!",{a:raw.slice(0,20)}));$("ans").select();return}
   G.checking=true;const a=$("ans"),e=$("err");a.disabled=true;
-  if(!hit){clearTimeout(errT);e.textContent="ПРОВЕРЯЮ…";e.classList.add("on","chk")}
+  if(!hit){clearTimeout(errT);e.textContent=tl("ПРОВЕРЯЮ…");e.classList.add("on","chk")}
   let d;try{d=await roomCall("answer",{code:r.code,token:r.t,round:s.round,raw:raw.slice(0,60),label:hit?hit.label.slice(0,60):null,src:hit?(hit.free?"free":"list"):"ai"})}
   catch(x){d={error:x.status===429?"rate":"net"}}
   G.checking=false;e.classList.remove("on","chk");
   if(R!==r||r.st.phase!=="q"||r.st.round!==s.round)return;
-  if(d.accepted){r.mine={round:s.round,raw,label:d.label};roomLocked(raw);if(corrected(raw,{label:d.label}))toast(`ЗАСЧИТАНО КАК «${d.label.toUpperCase()}»`);sendAns(q,{label:d.label});return}
+  if(d.accepted){r.mine={round:s.round,raw,label:d.label};roomLocked(raw);if(corrected(raw,{label:d.label}))toast(tl("ЗАСЧИТАНО КАК {a}",{a:qq(d.label.toUpperCase())}));sendAns(q,{label:d.label});return}
   if(d.error==="closed"||d.error==="late"){G.locked=true;return}
   a.disabled=false;setTimeout(()=>{a.focus();a.select()},0);
-  err(d.error==="net"?"НЕТ СВЯЗИ — ЖМИ ЕЩЁ РАЗ":d.error==="rate"||d.error==="busy"?"НЕ ТАК БЫСТРО":d.error==="ai"?"ПРОВЕРКА НЕ ОТВЕТИЛА — ДРУГОЙ ВАРИАНТ?":`«${raw.slice(0,20)}» — не засчитано. Ещё вариант!`);
+  err(d.error==="net"?tl("НЕТ СВЯЗИ — ЖМИ ЕЩЁ РАЗ"):d.error==="rate"||d.error==="busy"?tl("НЕ ТАК БЫСТРО"):d.error==="ai"?tl("ПРОВЕРКА НЕ ОТВЕТИЛА — ДРУГОЙ ВАРИАНТ?"):tl("«{a}» — не засчитано. Ещё вариант!",{a:raw.slice(0,20)}));
 }
 function roomReveal(){
   const s=R.st,L=s.last,me=meP(),q=Qs[L.qid];
@@ -1850,13 +1997,13 @@ function roomReveal(){
 // строки ответов: сначала самые дорогие, у каждого — уровень, ник, ответ и «УНИКАЛЬНО»
 function ansRows(L,showMiss){
   const rows=L.ans.slice().sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name)).map((a,i)=>{const T=TIERS[a.pts]||TIERS[0];const fix=a.raw&&norm(a.raw)!==norm(a.label);
-    return`<div class="rrow ${a.id===R.id?"me":""}" style="animation-delay:${.15+Math.min(i,12)*.06}s"><span>${tierBadge(T,18)}</span><div><span class="nm">${esc(a.name.toUpperCase())}${a.id===R.id?" · ТЫ":""}</span><div class="an">${esc(a.label)}${fix?` <small>(${esc(a.raw)})</small>`:""}${a.uniq?`<span class="uq">★ УНИКАЛЬНО</span>`:""}${a.ai?` <small>· проверено ИИ</small>`:""}</div></div><span class="pt" style="color:${T.c}">+${a.pts}</span></div>`});
-  if(showMiss)for(const m of L.miss||[])rows.push(`<div class="rrow ${m.id===R.id?"me":""}"><span>${tierBadge(TIERS[0],18)}</span><div><span class="nm">${esc(m.name.toUpperCase())}${m.id===R.id?" · ТЫ":""}</span><div class="an"><small>— время вышло</small></div></div><span class="pt" style="color:${TIERS[0].c}">+0</span></div>`);
-  return rows.join("")||`<div class="next">никто не успел ответить</div>`;
+    return`<div class="rrow ${a.id===R.id?"me":""}" style="animation-delay:${.15+Math.min(i,12)*.06}s"><span>${tierBadge(T,18)}</span><div><span class="nm">${esc(a.name.toUpperCase())}${a.id===R.id?tl(" · ТЫ"):""}</span><div class="an">${esc(a.label)}${fix?` <small>(${esc(a.raw)})</small>`:""}${a.uniq?`<span class="uq">${tl("★ УНИКАЛЬНО")}</span>`:""}${a.ai?` <small>· ${tl("проверено ИИ")}</small>`:""}</div></div><span class="pt" style="color:${T.c}">+${a.pts}</span></div>`});
+  if(showMiss)for(const m of L.miss||[])rows.push(`<div class="rrow ${m.id===R.id?"me":""}"><span>${tierBadge(TIERS[0],18)}</span><div><span class="nm">${esc(m.name.toUpperCase())}${m.id===R.id?tl(" · ТЫ"):""}</span><div class="an"><small>${tl("— время вышло")}</small></div></div><span class="pt" style="color:${TIERS[0].c}">+0</span></div>`);
+  return rows.join("")||`<div class="next">${tl("никто не успел ответить")}</div>`;
 }
 function board(s,delta){
   const ps=s.players.slice().sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
-  return ps.map(p=>{const pl=placeOf(s,p.id),d=delta&&delta.get(p.id);return`<div class="lb ${p.id===R.id?"me":""}"><span class="pl ${pl<=3?"g"+pl:""}">#${pl}</span><span class="nm">${esc(p.name.toUpperCase())}${p.id===R.id?" · ТЫ":""}</span><span class="dl">${d?"+"+d:""}</span><span class="sc">${p.score} КМ</span></div>`}).join("");
+  return ps.map(p=>{const pl=placeOf(s,p.id),d=delta&&delta.get(p.id);return`<div class="lb ${p.id===R.id?"me":""}"><span class="pl ${pl<=3?"g"+pl:""}">#${pl}</span><span class="nm">${esc(p.name.toUpperCase())}${p.id===R.id?tl(" · ТЫ"):""}</span><span class="dl">${d?"+"+d:""}</span><span class="sc">${p.score}${tl(" КМ")}</span></div>`}).join("");
 }
 function roomRevealPanel(){
   const s=R.st;if(s.phase!=="reveal")return;R.panel=true;
@@ -1864,13 +2011,13 @@ function roomRevealPanel(){
   const T=mine?TIERS[mine.pts]||TIERS[0]:TIERS[0],was=R.wasIn===s.round||mine;
   const delta=new Map(L.ans.map(a=>[a.id,a.pts]));
   const e=$("end");e.dataset.v="reveal";const keep=e.dataset.r===String(s.round)?e.scrollTop:0;e.dataset.r=s.round;
-  e.innerHTML=`<h2>${ico("party",14)} ${esc(s.code)} · ВОПРОС ${s.round+1} ИЗ ${s.total}</h2><div class="rq">${esc(q?q.q:"")}</div>
+  e.innerHTML=`<h2>${ico("party",14)} ${esc(s.code)} · ${tl("ВОПРОС {n} ИЗ {m}",{n:s.round+1,m:s.total})}</h2><div class="rq">${esc(q?q.q:"")}</div>
    ${was?`<div class="rbig ${T.p===100?"rainbow":""}" style="color:${T.c};text-shadow:${T.p===100?"none":`0 0 18px ${T.c}88,0 3px 0 #000`}">${T.n}</div>
-   <div class="rme">${mine?`«${esc(mine.raw.toUpperCase())}»${norm(mine.raw)!==norm(mine.label)?` → ${esc(mine.label)}`:""} · <b style="color:${T.c}">+${T.p}</b>${mine.uniq?`<span class="uq">★ УНИКАЛЬНО</span>`:""}`:"ВРЕМЯ ВЫШЛО · <b>+0</b>"}</div>`:`<div class="rme" style="margin-top:12px">ты зашёл посреди вопроса — играешь со следующего</div>`}
-   <span class="rlab">ОТВЕТЫ ЭКИПАЖА</span>${ansRows(L,true)}
-   <span class="rlab">ТАБЛИЦА</span>${board(s,delta)}
-   <div class="rtimer"><i id="rBar"></i></div><div class="next">${last?"ИТОГИ":"СЛЕДУЮЩИЙ ВОПРОС"} ЧЕРЕЗ <span id="rLeft"></span></div>
-   ${host?`<div class="rowBtns"><button class="btn hot" id="rNext">${last?"К ИТОГАМ ▲":"ДАЛЬШЕ ▲"}</button></div>`:""}`;
+   <div class="rme">${mine?`${qq(esc(mine.raw.toUpperCase()))}${norm(mine.raw)!==norm(mine.label)?` → ${esc(mine.label)}`:""} · <b style="color:${T.c}">+${T.p}</b>${mine.uniq?`<span class="uq">${tl("★ УНИКАЛЬНО")}</span>`:""}`:`${tl("ВРЕМЯ ВЫШЛО")} · <b>+0</b>`}</div>`:`<div class="rme" style="margin-top:12px">${tl("ты зашёл посреди вопроса — играешь со следующего")}</div>`}
+   <span class="rlab">${tl("ОТВЕТЫ ЭКИПАЖА")}</span>${ansRows(L,true)}
+   <span class="rlab">${tl("ТАБЛИЦА")}</span>${board(s,delta)}
+   <div class="rtimer"><i id="rBar"></i></div><div class="next">${last?tl("ИТОГИ ЧЕРЕЗ"):tl("СЛЕДУЮЩИЙ ВОПРОС ЧЕРЕЗ")} <span id="rLeft"></span></div>
+   ${host?`<div class="rowBtns"><button class="btn hot" id="rNext">${last?tl("К ИТОГАМ ▲"):tl("ДАЛЬШЕ ▲")}</button></div>`:""}`;
   e.scrollTop=keep;show("end",true);
   if(host)$("rNext").onclick=()=>{SFX.click();$("rNext").disabled=true;roomCall("next",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{})};
   const tick=()=>{if(!R||R.st!==s){clearInterval(R&&R.tick);return}const left=Math.max(0,s.nextAt-srvNow());const el=$("rLeft"),b=$("rBar");if(!el)return;el.textContent=Math.ceil(left/1000);b.style.width=(left/15000*100)+"%"};
@@ -1885,33 +2032,33 @@ function roomEnd(){
 function roomEndPanel(){
   const s=R.st;if(s.phase!=="end")return;
   const ps=s.players.slice().sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name)),host=s.host===R.id,pl=placeOf(s,R.id);
-  const pod=[ps[1],ps[0],ps[2]].map((p,i)=>{if(!p)return`<div class="pod"></div>`;const k=[2,1,3][i];return`<div class="pod p${k} ${p.id===R.id?"me":""}"><div class="pn">${esc(p.name.toUpperCase())}</div><div class="ps">${p.score} км</div><div class="pb">${k}</div></div>`}).join("");
+  const pod=[ps[1],ps[0],ps[2]].map((p,i)=>{if(!p)return`<div class="pod"></div>`;const k=[2,1,3][i];return`<div class="pod p${k} ${p.id===R.id?"me":""}"><div class="pn">${esc(p.name.toUpperCase())}</div><div class="ps">${p.score}${tl(" км")}</div><div class="pb">${k}</div></div>`}).join("");
   const rr=s.rarest,rq=rr&&Qs[rr.qid];
   const all=(s.rounds||[]).map((L,i)=>`<div class="rq" style="margin-top:14px">${i+1}. ${esc(Qs[L.qid]?Qs[L.qid].q:"?")}</div>${ansRows(L,false)}`).join("");
   const medal=["🥇","🥈","🥉"];
-  R.share=`ОРБИТА · КОМНАТА ${s.code}\n${ps.slice(0,5).map((p,i)=>`${medal[i]||"▲"} ${p.name} — ${p.score} км`).join("\n")}${rr?`\nСамый редкий ответ: «${rr.label}» (${rr.name})`:""}`;
+  R.share=`${tl("ОРБИТА")} · ${tl("КОМНАТА {c}",{c:s.code})}\n${ps.slice(0,5).map((p,i)=>`${medal[i]||"▲"} ${p.name} — ${p.score}${tl(" км")}`).join("\n")}${rr?"\n"+tl("Самый редкий ответ: {a} ({n})",{a:qq(rr.label),n:rr.name}):""}`;
   const meS=(ps.find(p=>p.id===R.id)||{score:0}).score;
-  R.card={alt:meS,title:"КОМНАТА "+s.code,big:fmtKm(meS)+" КМ",sub:ps.length<2?cardLm(meS):pl===1?`1 место из ${ps.length} · победа!`:`${pl} место из ${ps.length}`,
+  R.card={alt:meS,title:tl("КОМНАТА {c}",{c:s.code}),big:fmtKm(meS)+tl(" КМ"),sub:ps.length<2?cardLm(meS):pl===1?tl("1 место из {n} · победа!",{n:ps.length}):tl("{p} место из {n}",{p:pl,n:ps.length}),
     badges:(s.rounds||[]).map(L=>{const a=(L.ans||[]).find(a=>a.id===R.id);return TIERS[a?a.pts:0]||TIERS[0]})};
   const e=$("end");e.dataset.v="end";const keep=e.scrollTop;
-  e.innerHTML=`<h2>${ico("party",14)} КОМНАТА ${esc(s.code)} · ИТОГИ</h2><div class="podium">${pod}</div>
-   <div class="dwin ${pl===1&&ps.length>1?"rainbow":""}" style="color:var(--cy)">${ps.length<2?"ПОЛЁТ ЗАВЕРШЁН":pl===1?"ТЫ ПОБЕДИЛ(А)!":`ТЫ НА ${pl} МЕСТЕ ИЗ ${ps.length}`}</div>
-   ${rr?`<div class="dsum" style="text-align:center">▲ самый редкий ответ комнаты: «${esc(rr.label)}» — ${esc(rr.name)}${rq?` (${esc(rq.q.toLowerCase())})`:""} · +${rr.pts}</div>`:""}
-   <span class="rlab">ТАБЛИЦА</span>${board(s,null)}
-   ${all?`<details><summary>▼ ВСЕ ОТВЕТЫ ПО ВОПРОСАМ</summary>${all}</details>`:""}
-   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="rShare">${ico("share",14)} ПОДЕЛИТЬСЯ</button>${host?`<button class="btn hot" id="rAgain">${ico("rocket",12)} ЕЩЁ РАЗ</button>`:""}</div>
-   ${host?"":`<div class="next">ХОСТ МОЖЕТ ЗАПУСТИТЬ ЕЩЁ РАЗ — ОСТАВАЙСЯ В КОМНАТЕ</div>`}
-   <div class="rowBtns"><button class="btn small" id="rLeave">${ico("home",12)} ВЫЙТИ ИЗ КОМНАТЫ</button></div>`;
+  e.innerHTML=`<h2>${ico("party",14)} ${tl("КОМНАТА {c}",{c:esc(s.code)})} · ${tl("ИТОГИ")}</h2><div class="podium">${pod}</div>
+   <div class="dwin ${pl===1&&ps.length>1?"rainbow":""}" style="color:var(--cy)">${ps.length<2?tl("ПОЛЁТ ЗАВЕРШЁН"):pl===1?tl("ТЫ ПОБЕДИЛ(А)!"):tl("ТЫ НА {p} МЕСТЕ ИЗ {n}",{p:pl,n:ps.length})}</div>
+   ${rr?`<div class="dsum" style="text-align:center">▲ ${tl("самый редкий ответ комнаты:")} ${qq(esc(rr.label))} — ${esc(rr.name)}${rq?` (${esc(rq.q.toLowerCase())})`:""} · +${rr.pts}</div>`:""}
+   <span class="rlab">${tl("ТАБЛИЦА")}</span>${board(s,null)}
+   ${all?`<details><summary>${tl("▼ ВСЕ ОТВЕТЫ ПО ВОПРОСАМ")}</summary>${all}</details>`:""}
+   <div class="rowBtns" style="margin-top:16px"><button class="btn" id="rShare">${ico("share",14)} ${tl("ПОДЕЛИТЬСЯ")}</button>${host?`<button class="btn hot" id="rAgain">${ico("rocket",12)} ${tl("ЕЩЁ РАЗ")}</button>`:""}</div>
+   ${host?"":`<div class="next">${tl("ХОСТ МОЖЕТ ЗАПУСТИТЬ ЕЩЁ РАЗ — ОСТАВАЙСЯ В КОМНАТЕ")}</div>`}
+   <div class="rowBtns"><button class="btn small" id="rLeave">${ico("home",12)} ${tl("ВЫЙТИ ИЗ КОМНАТЫ")}</button></div>`;
   const det=e.querySelector("details");if(det&&R.detOpen)det.open=true;if(det)det.ontoggle=()=>{if(R)R.detOpen=det.open};
   e.scrollTop=keep;show("end",true);
   $("rShare").onclick=()=>shareCard(R.card,R.share,roomLink(s.code));$("rLeave").onclick=roomLeave;
-  if(host)$("rAgain").onclick=()=>{SFX.click();$("rAgain").disabled=true;roomCall("again",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{toast("НЕ ВЫШЛО");if($("rAgain"))$("rAgain").disabled=false})};
+  if(host)$("rAgain").onclick=()=>{SFX.click();$("rAgain").disabled=true;roomCall("again",{code:R.code,token:R.t}).then(d=>roomApply(d.state)).catch(()=>{toast(tl("НЕ ВЫШЛО"));if($("rAgain"))$("rAgain").disabled=false})};
 }
 
 /* =================== РЕЙТИНГ ДНЯ =================== */
 // Закончил сегодняшний запуск — лог уходит на сервер (один раз, только сегодняшний день), сервер сам пересчитывает очки.
 // Таблицы обновляются короткими запросами раз в 8 с, пока их видно.
-const lbKey=d=>"orb-d-"+dKey(dateOf(d));
+const lbKey=d=>DK(dateOf(d));
 const lbLog=s=>(s.log||[]).map(l=>({qid:l.qid,raw:String(l.raw||"").slice(0,60),label:l.label?String(l.label).slice(0,60):null,pts:l.pts|0}));
 // сегодняшний запуск закончен, но ещё не в рейтинге
 const lbPending=()=>{const s=store.get(lbKey(TODAY));return!!(s&&s.done&&!s.lb)};
@@ -1924,23 +2071,23 @@ async function lbPost(path,body,ms=8000){
 async function lbSubmit(box,done,name){
   const s=store.get(lbKey(TODAY));if(!s||!s.done||s.lb)return done();
   name=(name||nickOf()).trim();if(!name)return lbAskNick(box,done,"");
-  const el=$(box);if(!el)return;el.innerHTML=`<div class="next">ОТПРАВЛЯЮ В РЕЙТИНГ…</div>`;
-  const{status,d}=await lbPost("/lb/submit",{pid:pid(),day:TODAY,name,log:lbLog(s)},20000);
+  const el=$(box);if(!el)return;el.innerHTML=`<div class="next">${tl("ОТПРАВЛЯЮ В РЕЙТИНГ…")}</div>`;
+  const{status,d}=await lbPost("/lb/submit",{pid:pid(),lang:LANG,day:TODAY,name,log:lbLog(s)},20000);
   if(!$(box))return;
   if(status===200&&d&&d.ok){const s2=store.get(lbKey(TODAY))||s;s2.lb={score:d.score};store.set(lbKey(TODAY),s2);if(!nickOf())store.set("orb-nick",name);return done()}
   const e=d&&d.error;
-  if(e==="bad_name")return lbAskNick(box,done,"ЭТОТ НИК НЕ ПОДОЙДЁТ — ПРИДУМАЙ ДРУГОЙ");
-  const msg=e==="bad_set"?"ВОПРОСЫ ОБНОВИЛИСЬ — ОБНОВИ СТРАНИЦУ":e==="bad_request"?"ЭТОТ ЗАПУСК УЖЕ НЕЛЬЗЯ ОТПРАВИТЬ":e==="too_many"?"С ЭТОГО АДРЕСА СЕГОДНЯ УЖЕ МНОГО ЗАПИСЕЙ":"НЕ ВЫШЛО ОТПРАВИТЬ В РЕЙТИНГ";
+  if(e==="bad_name")return lbAskNick(box,done,tl("ЭТОТ НИК НЕ ПОДОЙДЁТ — ПРИДУМАЙ ДРУГОЙ"));
+  const msg=e==="bad_set"?tl("ВОПРОСЫ ОБНОВИЛИСЬ — ОБНОВИ СТРАНИЦУ"):e==="bad_request"?tl("ЭТОТ ЗАПУСК УЖЕ НЕЛЬЗЯ ОТПРАВИТЬ"):e==="too_many"?tl("С ЭТОГО АДРЕСА СЕГОДНЯ УЖЕ МНОГО ЗАПИСЕЙ"):tl("НЕ ВЫШЛО ОТПРАВИТЬ В РЕЙТИНГ");
   const again=!e||e==="retry"||e==="busy"||e==="rate_limited";
-  $(box).innerHTML=`<div class="next">${msg}</div>${again?`<div class="rowBtns"><button class="btn small" id="lbRetry">ЕЩЁ РАЗ</button></div>`:""}`;
+  $(box).innerHTML=`<div class="next">${msg}</div>${again?`<div class="rowBtns"><button class="btn small" id="lbRetry">${tl("ЕЩЁ РАЗ")}</button></div>`:""}`;
   if(again)$("lbRetry").onclick=()=>{SFX.click();lbSubmit(box,done,name)};
 }
 function lbAskNick(box,done,msg){
   const el=$(box);if(!el)return;
-  el.innerHTML=`<div class="lbhead"><b>РЕЙТИНГ ДНЯ · #${TODAY}</b></div><div class="next" style="margin-top:6px">${msg||"ПРИДУМАЙ НИК — И ТЫ В ТАБЛИЦЕ ДНЯ"}</div>
-   <label>ТВОЙ НИК</label><input class="nick" id="lbNick" maxlength="16" placeholder="например, Гагарин" value="${esc(nickOf())}">
-   <div class="rowBtns"><button class="btn hot" id="lbGo">${ico("star",12)} В РЕЙТИНГ</button></div>`;
-  const go=()=>{const v=$("lbNick").value.trim().slice(0,16);if(!v){$("lbNick").focus();toast("ВВЕДИ НИК");return}SFX.click();lbSubmit(box,done,v)};
+  el.innerHTML=`<div class="lbhead"><b>${tl("РЕЙТИНГ ДНЯ")} · #${TODAY}</b></div><div class="next" style="margin-top:6px">${msg||tl("ПРИДУМАЙ НИК — И ТЫ В ТАБЛИЦЕ ДНЯ")}</div>
+   <label>${tl("ТВОЙ НИК")}</label><input class="nick" id="lbNick" maxlength="16" placeholder="${tl("например, Гагарин")}" value="${esc(nickOf())}">
+   <div class="rowBtns"><button class="btn hot" id="lbGo">${ico("star",12)} ${tl("В РЕЙТИНГ")}</button></div>`;
+  const go=()=>{const v=$("lbNick").value.trim().slice(0,16);if(!v){$("lbNick").focus();toast(tl("ВВЕДИ НИК"));return}SFX.click();lbSubmit(box,done,v)};
   $("lbGo").onclick=go;$("lbNick").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go()}};
 }
 // следим за таблицей, пока её видно: один таймер на блок
@@ -1949,49 +2096,49 @@ function lbWatch(id,req,render){
   lbUnwatch(id);const w={v:null};LBW[id]=w;
   const tick=async()=>{
     if(LBW[id]!==w)return;const el=$(id);if(!el||el.closest(".hidden")){lbUnwatch(id);return}
-    if(!document.hidden){const{status,d}=await lbPost("/lb",{...req,v:w.v});if(LBW[id]!==w||!$(id))return;
+    if(!document.hidden){const{status,d}=await lbPost("/lb",{...req,v:w.v,lang:LANG});if(LBW[id]!==w||!$(id))return;
       if(status===200&&d&&!d.same&&Array.isArray(d.top)){w.v=d.v;render(d)}else if(w.v==null&&!(status===200&&d&&d.same))render(null)}
     w.t=setTimeout(tick,8000)};
   tick();
 }
 function lbUnwatch(id){const w=LBW[id];if(w){clearTimeout(w.t);delete LBW[id]}}
 function lbRow(r,me){
-  return`<div class="lr ${me?"me":""}"><span class="pl ${r.p<=3?"g"+r.p:""}">#${r.p}</span><span class="nm ${r.name==null?"anon":""}">${r.name==null?"ПИЛОТ":esc(r.name.toUpperCase())}${me?" · ТЫ":""}${r.day?` <small>#${r.day}</small>`:""}</span><span class="tb">${(r.tiers||[]).map(p=>tierBadge(TIERS[p]||TIERS[0],10)).join("")}</span><span class="sc">${r.score} КМ</span></div>`;
+  return`<div class="lr ${me?"me":""}"><span class="pl ${r.p<=3?"g"+r.p:""}">#${r.p}</span><span class="nm ${r.name==null?"anon":""}">${r.name==null?tl("ПИЛОТ"):esc(r.name.toUpperCase())}${me?tl(" · ТЫ"):""}${r.day?` <small>#${r.day}</small>`:""}</span><span class="tb">${(r.tiers||[]).map(p=>tierBadge(TIERS[p]||TIERS[0],10)).join("")}</span><span class="sc">${r.score}${tl(" КМ")}</span></div>`;
 }
 // d — ответ /api/lb; o.title, o.mine (что показать, если тебя нет в таблице), o.score (свой счёт в игре), o.foot
 function lbTable(d,o={}){
-  if(!d)return`<div class="lbhead"><b>${o.title||"РЕЙТИНГ"}</b></div><div class="next">НЕТ СВЯЗИ С ЦУПОМ — ПРОБУЮ ЕЩЁ</div>${o.foot||""}`;
-  let h=`<div class="lbhead"><b>${o.title||"РЕЙТИНГ ДНЯ · #"+d.day}</b><small>${d.n} ${plural(d.n,"ПИЛОТ","ПИЛОТА","ПИЛОТОВ")}</small></div>`;
-  if(d.me&&d.me.hidden)h+=`<div class="lbnote">твоя запись скрыта модератором</div>`;
-  else if(d.me){h+=`<div class="lbme">ТЫ #${d.me.p} ИЗ ${d.n}</div>`;if(o.score!=null&&d.me.score!==o.score)h+=`<div class="lbnote">в рейтинге ${d.me.score} км — очки пересчитал сервер</div>`}
+  if(!d)return`<div class="lbhead"><b>${o.title||tl("РЕЙТИНГ")}</b></div><div class="next">${tl("НЕТ СВЯЗИ С ЦУПОМ — ПРОБУЮ ЕЩЁ")}</div>${o.foot||""}`;
+  let h=`<div class="lbhead"><b>${o.title||tl("РЕЙТИНГ ДНЯ")+" · #"+d.day}</b><small>${d.n} ${plural(d.n,"ПИЛОТ","ПИЛОТА","ПИЛОТОВ")}</small></div>`;
+  if(d.me&&d.me.hidden)h+=`<div class="lbnote">${tl("твоя запись скрыта модератором")}</div>`;
+  else if(d.me){h+=`<div class="lbme">${tl("ТЫ #{p} ИЗ {n}",{p:d.me.p,n:d.n})}</div>`;if(o.score!=null&&d.me.score!==o.score)h+=`<div class="lbnote">${tl("в рейтинге {s} км — очки пересчитал сервер",{s:d.me.score})}</div>`}
   else if(o.mine)h+=o.mine;
   const meIn=d.top.some(r=>r.me);
-  h+=d.top.length?d.top.map(r=>lbRow(r,!!r.me)).join(""):`<div class="next">ПОКА ПУСТО — СТАНЬ ПЕРВЫМ</div>`;
+  h+=d.top.length?d.top.map(r=>lbRow(r,!!r.me)).join(""):`<div class="next">${tl("ПОКА ПУСТО — СТАНЬ ПЕРВЫМ")}</div>`;
   if(d.me&&!d.me.hidden&&!meIn)h+=`<div class="lr gap">· · ·</div>${lbRow(d.me,true)}`;
   return h+(o.foot||"");
 }
 // итоговый экран сегодняшнего запуска: отправить (спросив ник), потом место и топ-10
 function lbEnd(g){
   if(!$("lbBox"))return;
-  const view=()=>{if(G!==g)return;const foot=`<div class="rowBtns"><button class="btn small" id="lbAll">${ico("star",12)} ВЕСЬ РЕЙТИНГ</button></div>`;
+  const view=()=>{if(G!==g)return;const foot=`<div class="rowBtns"><button class="btn small" id="lbAll">${ico("star",12)} ${tl("ВЕСЬ РЕЙТИНГ")}</button></div>`;
     lbWatch("lbBox",{kind:"day",day:TODAY,pid:pid(),lim:10},d=>{const b=$("lbBox");if(!b)return;b.innerHTML=lbTable(d,{score:g.score,foot});const a=$("lbAll");if(a)a.onclick=()=>lbScreen("day")})};
   if(lbPending())lbSubmit("lbBox",view);else view();
 }
 // экран «РЕЙТИНГ»: сегодня / вчера / лучшие за неделю
 function lbScreen(tab){
-  const TABS=[["day","СЕГОДНЯ"],["yday","ВЧЕРА"],["week","НЕДЕЛЯ"]];
-  modal(`<h3>${ico("star",14)} РЕЙТИНГ</h3><div class="seg lbtabs" id="lbTabs">${TABS.map(([k,n])=>`<button class="btn small ${k===tab?"on":""}" data-t="${k}">${n}</button>`).join("")}</div>
-   <div id="lbModal"><div class="next">ЗАГРУЖАЮ…</div></div>
-   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="lbClose">ЗАКРЫТЬ</button></div>`);
+  const TABS=[["day",tl("СЕГОДНЯ")],["yday",tl("ВЧЕРА")],["week",tl("НЕДЕЛЯ")]];
+  modal(`<h3>${ico("star",14)} ${tl("РЕЙТИНГ")}</h3><div class="seg lbtabs" id="lbTabs">${TABS.map(([k,n])=>`<button class="btn small ${k===tab?"on":""}" data-t="${k}">${n}</button>`).join("")}</div>
+   <div id="lbModal"><div class="next">${tl("ЗАГРУЖАЮ…")}</div></div>
+   <div class="rowBtns" style="margin-top:12px"><button class="btn small" id="lbClose">${tl("ЗАКРЫТЬ")}</button></div>`);
   $("lbClose").onclick=()=>{SFX.click();show("modal",false)};
   $("lbTabs").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{SFX.click();lbScreen(b.dataset.t)});
   const s=store.get(lbKey(TODAY));
   if(tab==="day"&&lbPending())return lbSubmit("lbModal",()=>lbScreen("day"));
   let mine="";
-  if(tab==="day"&&!(s&&s.done))mine=`<div class="next">${s?"ДОЛЕТИ СЕГОДНЯШНИЙ ЗАПУСК":"СЫГРАЙ ЗАПУСК ДНЯ"} — И ТЫ В ТАБЛИЦЕ</div><div class="rowBtns"><button class="btn hot" id="lbPlay">${ico("rocket",12)} ${s?"ПРОДОЛЖИТЬ":"ИГРАТЬ"}</button></div>`;
+  if(tab==="day"&&!(s&&s.done))mine=`<div class="next">${s?tl("ДОЛЕТИ СЕГОДНЯШНИЙ ЗАПУСК — И ТЫ В ТАБЛИЦЕ"):tl("СЫГРАЙ ЗАПУСК ДНЯ — И ТЫ В ТАБЛИЦЕ")}</div><div class="rowBtns"><button class="btn hot" id="lbPlay">${ico("rocket",12)} ${s?tl("ПРОДОЛЖИТЬ"):tl("ИГРАТЬ")}</button></div>`;
   const req=tab==="week"?{kind:"week",day:TODAY}:{kind:"day",day:tab==="yday"?TODAY-1:TODAY};
-  const title=tab==="week"?`ЛУЧШИЕ ЗА НЕДЕЛЮ · #${Math.max(1,TODAY-6)}–${TODAY}`:tab==="yday"?`ВЧЕРА · #${TODAY-1}`:`СЕГОДНЯ · #${TODAY}`;
-  if(tab==="yday"&&TODAY<2){$("lbModal").innerHTML=`<div class="next">ВЧЕРА ЗАПУСКОВ ЕЩЁ НЕ БЫЛО</div>`;return}
+  const title=tab==="week"?`${tl("ЛУЧШИЕ ЗА НЕДЕЛЮ")} · #${Math.max(1,TODAY-6)}–${TODAY}`:tab==="yday"?`${tl("ВЧЕРА")} · #${TODAY-1}`:`${tl("СЕГОДНЯ")} · #${TODAY}`;
+  if(tab==="yday"&&TODAY<2){$("lbModal").innerHTML=`<div class="next">${tl("ВЧЕРА ЗАПУСКОВ ЕЩЁ НЕ БЫЛО")}</div>`;return}
   lbWatch("lbModal",{...req,pid:pid(),lim:20},d=>{const b=$("lbModal");if(!b)return;b.innerHTML=lbTable(d,{title,mine});const p=$("lbPlay");if(p)p.onclick=()=>{show("modal",false);startGame("daily")}});
 }
 
@@ -2002,17 +2149,17 @@ function goHome(){
   initHome();
 }
 function initHome(){
-  const s=store.get("orb-d-"+dKey(new Date()));
-  $("dayTxt").textContent=`ЗАПУСК #${TODAY}`;
-  $("startBtn").textContent=s&&s.done?`▲ МОЙ РЕЗУЛЬТАТ: ${s.score} КМ ▲`:s?"▲ ПРОДОЛЖИТЬ ЗАПУСК ▲":"▲ НАЧАТЬ ЗАПУСК ▲";
-  let st=0;for(let d=TODAY;d>0;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));if(v&&v.done)st++;else if(d===TODAY)continue;else break}
-  $("streakTxt").innerHTML=st?`СЕРИЯ: ${st} ${ico("fire",12)}`:"";
+  const s=store.get(DK(new Date()));
+  $("dayTxt").textContent=tl("ЗАПУСК #{n}",{n:TODAY});
+  $("startBtn").textContent=s&&s.done?tl("▲ МОЙ РЕЗУЛЬТАТ: {s} КМ ▲",{s:s.score}):s?tl("▲ ПРОДОЛЖИТЬ ЗАПУСК ▲"):tl("▲ НАЧАТЬ ЗАПУСК ▲");
+  let st=0;for(let d=TODAY;d>0;d--){const v=store.get(DK(dateOf(d)));if(v&&v.done)st++;else if(d===TODAY)continue;else break}
+  $("streakTxt").innerHTML=st?`${tl("СЕРИЯ: {n}",{n:st})} ${ico("fire",12)}`:"";
 }
 function modal(html){$("mbox").innerHTML=html;show("modal",true)}
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")show("modal",false)});
-function howHTML(){return`<h3>КАК ИГРАТЬ</h3><ul class="rules"><li>7 ВОПРОСОВ В ДЕНЬ. ОДИНАКОВЫЕ ДЛЯ ВСЕХ.</li><li>25 СЕКУНД, ЧТОБЫ НАЗВАТЬ ЧТО-ТО ОДНО.</li><li>РЕДКИЕ ОТВЕТЫ — МНОГО ОЧКОВ. ОЧЕВИДНЫЕ НИКУДА НЕ ЛЕТЯТ.</li><li>ХИТРЫЙ ОТВЕТ? ЭСКАДРИЛЬЯ ТОЖЕ О НЁМ ПОДУМАЛА.</li><li>КАЖДОЕ ОЧКО — +1 КМ ВЫСОТЫ. 700 — ОРБИТА.</li><li>ОДИН ЗАПУСК В ДЕНЬ. БЕЗ ВТОРОГО ШАНСА.</li></ul>
+function howHTML(){return`<h3>${tl("КАК ИГРАТЬ")}</h3><ul class="rules">${["7 ВОПРОСОВ В ДЕНЬ. ОДИНАКОВЫЕ ДЛЯ ВСЕХ.","25 СЕКУНД, ЧТОБЫ НАЗВАТЬ ЧТО-ТО ОДНО.","РЕДКИЕ ОТВЕТЫ — МНОГО ОЧКОВ. ОЧЕВИДНЫЕ НИКУДА НЕ ЛЕТЯТ.","ХИТРЫЙ ОТВЕТ? ЭСКАДРИЛЬЯ ТОЖЕ О НЁМ ПОДУМАЛА.","КАЖДОЕ ОЧКО — +1 КМ ВЫСОТЫ. 700 — ОРБИТА.","ОДИН ЗАПУСК В ДЕНЬ. БЕЗ ВТОРОГО ШАНСА."].map(x=>`<li>${tl(x)}</li>`).join("")}</ul>
  <div class="tierList">${[100,85,60,30,15,10].map(p=>`<div><span style="color:${TIERS[p].c}">${tierBadge(TIERS[p],14)} ${TIERS[p].n}</span><span style="color:${TIERS[p].c}">+${p}</span></div>`).join("")}</div>
- <div class="rowBtns" style="margin-top:14px"><button class="btn" onclick="show('modal',false)">ПОНЯТНО</button></div>`}
+ <div class="rowBtns" style="margin-top:14px"><button class="btn" onclick="show('modal',false)">${tl("ПОНЯТНО")}</button></div>`}
 $("howLink").onclick=()=>{SFX.click();modal(howHTML())};
 $("startBtn").onclick=()=>startGame("daily");
 $("endlessBtn").onclick=()=>startGame("endless");
@@ -2021,27 +2168,28 @@ $("roomBtn").onclick=()=>{SFX.click();roomMenu()};
 $("lbBtn").onclick=()=>{SFX.click();lbScreen("day")};
 $("archBtn").onclick=()=>{SFX.click();archive()};
 $("packBtn").onclick=()=>{SFX.click();packs()};
-function archive(){let h="";for(let d=TODAY;d>=1;d--){const v=store.get("orb-d-"+dKey(dateOf(d)));const dt=dateOf(d).toLocaleDateString("ru-RU",{day:"numeric",month:"short"});h+=`<button class="btn small" data-day="${d}"><span>#${d} · ${dt}${d===TODAY?" · СЕГОДНЯ":""}</span><small>${v&&v.done?v.score+" км":v?"не закончен":"не сыгран"}</small></button>`}
- modal(`<h3>АРХИВ ЗАПУСКОВ</h3><div class="mlist">${h}</div><div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+function archive(){let h="";for(let d=TODAY;d>=1;d--){const v=store.get(DK(dateOf(d)));const dt=dateOf(d).toLocaleDateString(LOC,{day:"numeric",month:"short"});h+=`<button class="btn small" data-day="${d}"><span>#${d} · ${dt}${d===TODAY?tl(" · СЕГОДНЯ"):""}</span><small>${v&&v.done?v.score+tl(" км"):v?tl("не закончен"):tl("не сыгран")}</small></button>`}
+ modal(`<h3>${tl("АРХИВ ЗАПУСКОВ")}</h3><div class="mlist">${h}</div><div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ЗАКРЫТЬ")}</button></div>`);
  $("mbox").querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{show("modal",false);startGame("daily",{day:+b.dataset.day})})}
 function packs(){const ic=CAT_ICON;
- modal(`<h3>ТЕМАТИЧЕСКИЕ НАБОРЫ</h3><div class="mlist">${Object.keys(CATS).map(c=>`<button class="btn small" data-cat="${c}"><span>${ic[c]} ${CATS[c].toUpperCase()}</span><small>${Qs.filter(q=>q.cat===c).length} вопросов</small></button>`).join("")}</div><div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">ЗАКРЫТЬ</button></div>`);
+ modal(`<h3>${tl("ТЕМАТИЧЕСКИЕ НАБОРЫ")}</h3><div class="mlist">${Object.keys(CATS).map(c=>`<button class="btn small" data-cat="${c}"><span>${ic[c]} ${CATS[c].toUpperCase()}</span><small>${Qs.filter(q=>q.cat===c).length}${tl(" вопросов")}</small></button>`).join("")}</div><div class="rowBtns" style="margin-top:12px"><button class="btn small" onclick="show('modal',false)">${tl("ЗАКРЫТЬ")}</button></div>`);
  $("mbox").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{show("modal",false);startGame("pack",{cat:b.dataset.cat});G.cat=b.dataset.cat})}
-$("menuBtn").onclick=()=>{SFX.click();modal(`<h3>МЕНЮ</h3><div class="mlist">
- <button class="btn small" id="mHow"><span>${ico("help",16)} КАК ИГРАТЬ</span></button>
- <button class="btn small" id="mDaily"><span>${ico("rocket",16)} ЗАПУСК ДНЯ</span><small>#${TODAY}</small></button>
- <button class="btn small" id="mLb"><span>${ico("star",16)} РЕЙТИНГ ДНЯ</span></button>
- <button class="btn small" id="mArch"><span>${ico("clock",16)} АРХИВ</span></button>
- <button class="btn small" id="mPack"><span>${ico("grid",16)} ТЕМАТИЧЕСКИЕ НАБОРЫ</span></button>
- <button class="btn small" id="mEnd"><span>${ico("inf",16)} БЕСКОНЕЧНЫЙ РЕЖИМ</span></button>
- <button class="btn small" id="mDuel"><span>${ico("duel",16)} ДУЭЛЬ С ДРУГОМ</span></button>
- <button class="btn small" id="mRoom"><span>${ico("party",16)} КОМНАТА ДЛЯ КОМПАНИИ</span><small>до 30</small></button>
- <button class="btn small" id="mHome"><span>${ico("home",16)} НА ГЛАВНУЮ</span></button></div>`);
+$("menuBtn").onclick=()=>{SFX.click();modal(`<h3>${tl("МЕНЮ")}</h3><div class="mlist">
+ <button class="btn small" id="mHow"><span>${ico("help",16)} ${tl("КАК ИГРАТЬ")}</span></button>
+ <button class="btn small" id="mDaily"><span>${ico("rocket",16)} ${tl("ЗАПУСК ДНЯ")}</span><small>#${TODAY}</small></button>
+ <button class="btn small" id="mLb"><span>${ico("star",16)} ${tl("РЕЙТИНГ ДНЯ")}</span></button>
+ <button class="btn small" id="mArch"><span>${ico("clock",16)} ${tl("АРХИВ")}</span></button>
+ <button class="btn small" id="mPack"><span>${ico("grid",16)} ${tl("ТЕМАТИЧЕСКИЕ НАБОРЫ")}</span></button>
+ <button class="btn small" id="mEnd"><span>${ico("inf",16)} ${tl("БЕСКОНЕЧНЫЙ РЕЖИМ")}</span></button>
+ <button class="btn small" id="mDuel"><span>${ico("duel",16)} ${tl("ДУЭЛЬ С ДРУГОМ")}</span></button>
+ <button class="btn small" id="mRoom"><span>${ico("party",16)} ${tl("КОМНАТА ДЛЯ КОМПАНИИ")}</span><small>${tl("до 30")}</small></button>
+ <button class="btn small" id="mHome"><span>${ico("home",16)} ${tl("НА ГЛАВНУЮ")}</span></button></div>${langRow()}`);
+ bindLang($("mbox"));
  $("mHow").onclick=()=>modal(howHTML());$("mDaily").onclick=()=>{show("modal",false);startGame("daily")};$("mArch").onclick=archive;$("mPack").onclick=packs;$("mEnd").onclick=()=>{show("modal",false);startGame("endless")};$("mDuel").onclick=duelMenu;$("mRoom").onclick=roomMenu;$("mLb").onclick=()=>lbScreen("day");$("mHome").onclick=()=>{show("modal",false);goHome()}};
 $("sndBtn").onclick=()=>{muted=!muted;store.set("orb-mute",muted);setMuteUI();if(!muted){ac();SFX.click()}};
 addEventListener("keydown",e=>{if(e.key==="Escape")show("modal",false);if(e.key==="Enter"&&!$("res").classList.contains("hidden")&&!$("res").contains(document.activeElement)){e.preventDefault();next()}});
 
-setMuteUI();initIcons();world.px=world.pxT=pxHome();initHome();world.anchor=world.anchorT=homeAnchor();
+setMuteUI();initIcons();initText();world.px=world.pxT=pxHome();initHome();world.anchor=world.anchorT=homeAnchor();
 {const dc=new URLSearchParams(location.search).get("duel");if(dc){history.replaceState(null,"",location.pathname);duelOpen(dc)}
  const rc=new URLSearchParams(location.search).get("room");if(rc)roomOpen(rc)}
 addEventListener("resize",()=>{world.pxT=G?pxGame():pxHome();if(!G)world.anchorT=homeAnchor()});
